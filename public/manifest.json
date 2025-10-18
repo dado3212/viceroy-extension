@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Viceroy",
+  "author": "Alex Beals",
+  "description": "Automatically match Monarch transactions with other platforms (currently just Uber and Uber Eats).",
+  "homepage_url": "https://alexbeals.com",
+  "version": "1.0.0",
+  "action": { "default_title": "Open Viceroy" },
+  "icons": {
+    "32": "icons/icon-32.png",
+    "128": "icons/icon-128.png"
+  },
+  "incognito": "split",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "app.html",
+        "app.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "permissions": [
+    "tabs",
+    "scripting",
+    "webRequest",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://riders.uber.com/*",
+    "https://www.ubereats.com/*",
+    "https://api.monarch.com/*",
+    "https://app.monarch.com/*",
+    "https://static-maps.uber.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}
