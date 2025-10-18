@@ -7,9 +7,9 @@ let uberEatsHeaders: { [key: string]: string } | null = null;
 let uberRidesHeaders: { [key: string]: string } | null = null;
 let monarchHeaders: { [key: string]: string } | null = null;
 
-export const getUberEatsHeaders = () => uberEatsHeaders!;
-export const getUberRidesHeaders = () => uberRidesHeaders!;
-export const getMonarchHeaders = () => monarchHeaders!;
+export const getUberEatsHeaders = () => uberEatsHeaders;
+export const getUberRidesHeaders = () => uberRidesHeaders;
+export const getMonarchHeaders = () => monarchHeaders;
 
 // Listen for any relevant requests, and steal the headers/cookies if we're missing them
 chrome.webRequest.onBeforeSendHeaders.addListener(
@@ -63,15 +63,26 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
   ["requestHeaders", "extraHeaders"]
 );
 
-// We need the headers, so if the tab's open force refresh it, and if it's not open
-// then open it (and wait til they're finished loading)
-export const syncHeaders = async () => {
-  // First get them from storage
+export const updateHeadersFromCache = async () => {
   ({
     uberEatsHeaders = uberEatsHeaders,
     uberRidesHeaders = uberRidesHeaders,
     monarchHeaders = monarchHeaders,
   } = await chrome.storage.sync.get(['uberEatsHeaders', 'uberRidesHeaders', 'monarchHeaders']));
+}
+
+// We need the headers, so if the tab's open force refresh it, and if it's not open
+// then open it (and wait til they're finished loading)
+export const syncHeaders = async (clearFromStorage = false) => {
+  // First handle storage
+  if (clearFromStorage) {
+    await chrome.storage.sync.remove(['uberEatsHeaders', 'uberRidesHeaders', 'monarchHeaders']);
+    uberEatsHeaders = null;
+    uberRidesHeaders = null;
+    monarchHeaders = null;
+  } else {
+    await updateHeadersFromCache();
+  }
   // If not, check from tabs. If they're open, reload, if they're not open then open one
   let uberEats: chrome.tabs.Tab | null = null, uberRides: chrome.tabs.Tab | null = null, monarch: chrome.tabs.Tab | null = null;
   if (uberEatsHeaders == null) {

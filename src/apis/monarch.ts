@@ -25,6 +25,17 @@ export async function getPendingUberTransactions({ limit = 200 } = {}): Promise<
   return data?.allTransactions?.results || [];
 }
 
+export async function fetchMonarchTags(): Promise<Array<MonarchTag>> {
+  const data = await monarchQuery({
+    operationName: 'Common_GetHouseholdTransactionTags',
+    variables: {
+      includeTransactionCount: false,
+    },
+    query: `query Common_GetHouseholdTransactionTags($search: String, $limit: Int, $bulkParams: BulkTransactionDataParams, $includeTransactionCount: Boolean = false) {\n  householdTransactionTags(\n    search: $search\n    limit: $limit\n    bulkParams: $bulkParams\n  ) {\n    id\n    name\n    color\n    order\n    transactionCount @include(if: $includeTransactionCount)\n    __typename\n  }\n}`
+  });
+  return data?.householdTransactionTags || [];
+}
+
 // update: mark reviewed + set note, optionally add tag
 export async function applyMonarchDecision({ transactionId, note, tag }: {transactionId: number, note: string | null, tag: string | null }) {
   // 1) set notes + mark reviewed
@@ -60,7 +71,7 @@ async function monarchQuery(data: any) {
     method: 'POST',
     mode: 'cors',
     credentials: 'include',
-    headers: getMonarchHeaders(),
+    headers: getMonarchHeaders()!,
     body: JSON.stringify(data),
   });
   if (!r.ok) { 

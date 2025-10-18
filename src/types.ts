@@ -45,6 +45,12 @@ type MonarchTransaction = {
   },
 };
 
+type MonarchTag = {
+  id: string,
+  name: string,
+  color: string,
+};
+
 type MatchedRow = {
   txn: {
     id: string,

@@ -1,5 +1,3 @@
-import { TAGS } from './constants';
-
 // Navbar configuration
 const transactions = document.getElementById('transactions-button') as HTMLDivElement;
 const settings = document.getElementById('settings-button') as HTMLDivElement;
@@ -16,9 +14,61 @@ settings.addEventListener('click', async () => {
   (document.querySelector('#settings')as HTMLElement).style.display = 'block';
   transactions.className = '';
   settings.className = 'selected';
+
+  await fetchCredentials();
+
+  await fetchTags();
 });
 
-// Transaction configuration
+/* === Settings configuration === */
+// Credentials
+async function fetchCredentials() {
+  const data = await chrome.runtime.sendMessage({ type: 'fetchCredentials' });
+  document.querySelector('#credentials')!.innerHTML = `
+    Monarch: ${data.data.monarch ? 'Synced' : 'Unsynced'}<br />
+    Uber Eats: ${data.data.uberEats ? 'Synced' : 'Unsynced'}<br />
+    Uber Rides: ${data.data.uberRides ? 'Synced' : 'Unsynced'}
+  `;
+}
+
+(document.getElementById('credentialsSync') as HTMLButtonElement).addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ type: 'updateCredentials' });
+});
+
+// Tags
+async function fetchTags() {
+  const tags = await chrome.runtime.sendMessage({ type: 'fetchTags' });
+  renderTags(tags);
+}
+
+async function renderTags(tags: any) {
+  if (tags.data) {
+    let newHTML = '';
+    for (const tagId of Object.keys(tags.data)) {
+      newHTML += `
+        <label>
+          <input value="${tagId}" type="checkbox" ${tags.data[tagId].checked ? 'checked' : ''} />
+          <span class="tag-indicator" style="background-color: ${tags.data[tagId].color}" ></span>
+          ${tags.data[tagId].name}
+        </label>`;
+    }
+    document.querySelector('#tags')!.innerHTML = newHTML;
+    document.querySelectorAll('#tags input').forEach(input => {
+      input.addEventListener('change', async () => {
+        await chrome.runtime.sendMessage({ type: 'updateTags', payload: { id: (input as HTMLInputElement).value, checked: (input as HTMLInputElement).checked } });
+      });
+    });
+  }
+}
+
+(document.getElementById('tagSync') as HTMLButtonElement).addEventListener('click', async () => {
+  const tags = await chrome.runtime.sendMessage({ type: 'syncTags' });
+  renderTags(tags);
+});
+
+// Locations
+
+/* === Transaction configuration === */
 const grid = document.getElementById('grid') as HTMLDivElement;
 const statusEl = document.getElementById('status') as HTMLSpanElement;
 const error = document.getElementById('error') as HTMLParagraphElement;
@@ -26,7 +76,7 @@ const uberRide = error.querySelector('button.uberRide') as HTMLButtonElement;
 const uberEats = error.querySelector('button.uberEats') as HTMLButtonElement;
 const monarch = error.querySelector('button.monarch') as HTMLButtonElement;
 
-function render(rows: any[]) {
+async function render(rows: any[]) {
   grid.style.display = 'block';
   grid.innerHTML = `<div class="header">
       <div class="head c1">Monarch</div>
@@ -36,6 +86,7 @@ function render(rows: any[]) {
       <div class="head c5">Status</div>
     </div>
   `;
+  const tags = await chrome.runtime.sendMessage({ type: 'fetchTags' });
   rows.forEach((r) => {
     const wrap = document.createElement('div'); wrap.className = 'row';
 
@@ -97,23 +148,24 @@ function render(rows: any[]) {
     };
     const actions = document.createElement('div');
     actions.className = 'c4';
-    const mk = (t: string, tag: string | null, color: string | null) => {
+    const mk = (name: string, tag: string | null, color: string | null) => {
       const b = document.createElement('button');
       if (color) {
-        b.dataset.color = 'true';
+        b.innerHTML = `<span class="tag-indicator" style="background-color: ${color}" ></span>${name}`;
         b.style.setProperty('--tag-color', color);
       } else {
         b.className = 'accept';
+        b.innerHTML = name;
       }
-      b.textContent = t;
       b.onclick = (e) => act(e, tag);
       return b;
     };
     actions.appendChild(mk('Accept', null, null));
-    TAGS.forEach(data => {
-      const [tagId, name, color] = data;
-      actions.appendChild(mk(name, tagId, color));
-    });
+    for (const tagId of Object.keys(tags.data)) {
+      if (tags.data[tagId].checked) {
+        actions.appendChild(mk(tags.data[tagId].name, tagId, tags.data[tagId].color));
+      }
+    }
 
     wrap.appendChild(monCol); wrap.appendChild(uberCol); wrap.appendChild(noteCol); wrap.appendChild(actions); wrap.appendChild(resultCol);
     grid.appendChild(wrap);
@@ -137,7 +189,7 @@ async function loadAndMatch() {
       }
       return;
     }
-    render(data.data);
+    await render(data.data);
     statusEl.textContent = `Loaded ${data.data.length}`;
   } catch (e: any) {
     console.log(e);

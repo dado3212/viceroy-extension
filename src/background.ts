@@ -1,8 +1,8 @@
 import './headers';
-import { syncHeaders, getUberEatsHeaders, getUberRidesHeaders, getMonarchHeaders } from './headers';
+import { syncHeaders, getUberEatsHeaders, getUberRidesHeaders, getMonarchHeaders, updateHeadersFromCache } from './headers';
 import { fetchUberEats } from './apis/eats';
 import { fetchUberRides } from './apis/rides';
-import { getPendingUberTransactions, applyMonarchDecision } from './apis/monarch';
+import { getPendingUberTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
 import { MERCHANT_IDS, SHORT_NAMES } from './constants';
 
 // Handle opening the page when you click it
@@ -236,7 +236,7 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   (async () => {
     if (msg.type !== 'fetch') return;
     await syncHeaders();
-    
+
     // If they're still not set after syncing, we're logged out and we need to get the user to log in
     const uberEatsHeader = getUberEatsHeaders();
     const uberRidesHeader = getUberRidesHeaders();
@@ -274,6 +274,78 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
     await applyMonarchDecision({ transactionId, note, tag });
 
     sendResponse({ data: { ok: true } });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'fetchCredentials') return;
+    await updateHeadersFromCache();
+    // If they're still not set after syncing, we're logged out and we need to get the user to log in
+    const uberEatsHeader = getUberEatsHeaders();
+    const uberRidesHeader = getUberRidesHeaders();
+    const monarchHeader = getMonarchHeaders();
+    
+    sendResponse({ data: {
+      uberEats: uberEatsHeader != null,
+      uberRides: uberRidesHeader != null,
+      monarch: monarchHeader != null
+    } });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'updateCredentials') return;
+    await syncHeaders(true);
+    
+    sendResponse({ data: { ok: true } });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+// Tags
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'fetchTags') return;
+
+    const { tags = {} }: { tags: { [key: string ]: MonarchTag & { checked: boolean } } } = await chrome.storage.sync.get('tags');
+    
+    sendResponse({ data: tags });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'updateTags') return;
+    const { tags = {} }: { tags: { [key: string ]: MonarchTag & { checked: boolean } } } = await chrome.storage.sync.get('tags');
+    const { id, checked } = msg.payload;
+    tags[id].checked = checked;
+    await chrome.storage.sync.set({ tags });
+
+    sendResponse({ data: { ok: true } });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'syncTags') return;
+
+    const monarchTags = await fetchMonarchTags();
+    const { tags = {} }: { tags: { [key: string ]: MonarchTag & { checked: boolean } } } = await chrome.storage.sync.get('tags');
+    
+    const newTags: { [key: string ]: MonarchTag & { checked: boolean } } = {};
+    for (const monarchTag of monarchTags) {
+      newTags[monarchTag.id] = { ...monarchTag, checked: tags[monarchTag.id]?.checked ?? false };
+    }
+
+    await chrome.storage.sync.set({ tags: newTags })
+    
+    sendResponse({ data: newTags });
   })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
   return true;
 });
