@@ -235,10 +235,8 @@ function matchUberDataToTxns(
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   (async () => {
     if (msg.type !== 'fetch') return;
-    // If any headers aren't set, sync them
-    if (getUberEatsHeaders() == null || getUberRidesHeaders() == null || getMonarchHeaders() == null) {
-      await syncHeaders();
-    }
+    await syncHeaders();
+    
     // If they're still not set after syncing, we're logged out and we need to get the user to log in
     const uberEatsHeader = getUberEatsHeaders();
     const uberRidesHeader = getUberRidesHeaders();
