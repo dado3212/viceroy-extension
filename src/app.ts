@@ -1,5 +1,24 @@
 import { TAGS } from './constants';
 
+// Navbar configuration
+const transactions = document.getElementById('transactions-button') as HTMLDivElement;
+const settings = document.getElementById('settings-button') as HTMLDivElement;
+
+transactions.addEventListener('click', async () => {
+  document.querySelectorAll('.content').forEach(x => { (x as HTMLElement).style.display = 'none'; });
+  (document.querySelector('#transactions')as HTMLElement).style.display = 'block';
+  transactions.className = 'selected';
+  settings.className = '';
+});
+
+settings.addEventListener('click', async () => {
+  document.querySelectorAll('.content').forEach(x => { (x as HTMLElement).style.display = 'none'; });
+  (document.querySelector('#settings')as HTMLElement).style.display = 'block';
+  transactions.className = '';
+  settings.className = 'selected';
+});
+
+// Transaction configuration
 const grid = document.getElementById('grid') as HTMLDivElement;
 const statusEl = document.getElementById('status') as HTMLSpanElement;
 const error = document.getElementById('error') as HTMLParagraphElement;

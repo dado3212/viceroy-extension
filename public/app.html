@@ -19,9 +19,45 @@
       -moz-osx-font-smoothing: grayscale;
       -webkit-text-size-adjust: 100%;
     }
-    #content {
+    #app {
+      margin: 10px 0;
+      display: flex;
+    }
+    #sidebar {
+      width: 240px;
+      margin: 0 20px 0 10px;
+    }
+    #sidebar h1 {
+      display: flex;
+      margin-left: 5px;
+      align-items: center;
+    }
+    #sidebar h1 img {
+      width: 18px;
+      margin-right: 4px;
+    }
+    nav {
+      display: flex;
+      flex-direction: column;
+    }
+    nav button {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      background-color: transparent;
+      transition: background-color 0.2s ease;
+    }
+    nav button.selected {
+      background-color: #efece9;
+      border-radius: 6px;
+    }
+    nav button img {
+      height: 16px;
+      margin-right: 8px;
+      width: 18px;
+    }
+    .content {
       max-width: 950px;
-      margin: 20px auto;
     }
     h1 {
       font-size: 18px;
@@ -42,6 +78,11 @@
       padding: 16px 20px;
       border-radius: 6px;
     }
+    button {
+      cursor: pointer;
+      font-family: inherit;
+      border: 0;
+    }
     .mainButton {
       color: white;
       border-radius: 4px;
@@ -52,8 +93,8 @@
       font-family: inherit;
       min-height: 36px;
       min-width: 64px;
-      cursor: pointer;
       transition: 0.2s ease;
+      margin: 0 3px;
 
       &:hover {
         box-shadow: 0 2px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 3px -2px rgba(0, 0, 0, 0.1);
@@ -147,18 +188,6 @@
       margin: 0;
       padding-left: 20px;
     }
-    button {
-      color: white;
-      border-radius: 4px;
-      font-size: 14px;
-      border: 0;
-      background-color: #2da6ff;
-      padding: 6px 12px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: 0.2s ease;
-      margin: 3px;
-    }
     button.uberRide {
       background-color: black;
     }
@@ -176,6 +205,8 @@
       box-shadow: rgba(34, 32, 29, 0.05) 0px 1px 2px;
       font-size: 14px;
       padding: 7.5px 12px;
+      border-radius: 4px;
+      margin: 3px;
     }
     .row button.accept {
       background-color: #2da6ff;
@@ -199,25 +230,45 @@
   </style>
 </head>
 <body>
-  <div id="content">
-    <h1>Transactions</h1>
-    <div class="wrapper" style="margin: 20px auto;">
-      <h2>Fetch data</h2>
-      <p>
-        This extension fetches pending Monarch transactions from Uber and Uber Eats, and tries to match the
-        data by price to rides and delivery orders from Uber. It also provides inline buttons to review 
-        these transactions, optionally tag them, and set descriptive notes.
-      </p>
-      <button id="match" class="mainButton">Fetch</button>
-      <span id="status"></span>
-      <div id="error" style="display: none;">
-        <p></p>
-        <button class="uberRide mainButton">Log in to Uber</button>
-        <button class="uberEats mainButton">Log in to Uber Eats</button>
-        <button class="monarch mainButton">Log in to Monarch</button>
+  <div id="app">
+    <div id="sidebar">
+      <div>
+        <h1><img src="icons/icon-128.png"> Viceroy</h1>
+      </div>
+      <nav>
+        <button id="transactions-button" class="selected"><img src="data:image/svg+xml,%3csvg%20xmlns='http://www.w3.org/2000/svg'%20width='13'%20height='17'%20viewBox='0%200%2013%2017'%20fill='none'%3e%3cpath%20d='M11.1009%2015.4317H2.01032C1.87083%2015.4327%201.73596%2015.3685%201.63175%2015.2512C1.52755%2015.134%201.46139%2014.9722%201.44605%2014.7969C1.44605%2014.7969%201.58943%2012.2182%201.50326%2010.5693C1.41648%208.90896%201.00027%206.34173%201.00027%206.34173C0.997921%206.24727%201.0109%206.15319%201.03843%206.06532C1.06596%205.97744%201.10743%205.89762%201.16031%205.83079C1.21318%205.76396%201.27633%205.71154%201.34586%205.67675C1.41538%205.64196%201.48981%205.62555%201.56455%205.62852H11.6397C11.7894%205.62852%2011.9329%205.70366%2012.0387%205.83741C12.1446%205.97117%2012.204%206.15257%2012.204%206.34173C12.204%206.34173%2011.7594%208.90995%2011.6545%2010.5729C11.5504%2012.222%2011.6651%2014.804%2011.6651%2014.804C11.6485%2014.978%2011.5818%2015.1381%2011.4777%2015.2539C11.3736%2015.3696%2011.2395%2015.4329%2011.1009%2015.4317Z'%20stroke='%2322201D'%20stroke-width='1.33333'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3cpath%20d='M3.81494%207.41519V4.33408C3.81494%203.59121%204.11005%202.87876%204.63534%202.35347C5.16063%201.82818%205.87307%201.53308%206.61595%201.53308C7.35882%201.53308%208.07127%201.82818%208.59656%202.35347C9.12185%202.87876%209.41695%203.59121%209.41695%204.33408V7.41519'%20stroke='%2322201D'%20stroke-width='1.33333'%20stroke-linecap='round'%20stroke-linejoin='round'/%3e%3c/svg%3e">Transactions</button>
+        <button id="settings-button"><img src="data:image/svg+xml,%3csvg%20width='21'%20height='20'%20viewBox='0%200%2021%2020'%20fill='none'%20xmlns='http://www.w3.org/2000/svg'%3e%3cpath%20d='M9.85376%200.842857C11.014%200.770244%2012.0457%201.10475%2012.6026%202.18959C12.8422%202.65627%2012.8424%202.95107%2012.8712%203.45718C12.9019%203.99702%2013.2268%204.2135%2013.6775%204.43134C14.2607%204.71308%2014.5913%204.28665%2015.1161%204.1262C16.592%203.67448%2017.8598%204.57738%2018.3694%205.93499C18.7674%206.99562%2018.4197%208.18217%2017.5077%208.84575C17.2413%209.03965%2016.9601%209.11444%2016.8178%209.44678C16.7143%209.68855%2016.7085%2010.2659%2016.8004%2010.5107C16.9446%2010.8952%2017.2605%2010.9561%2017.5564%2011.1816C18.4919%2011.8952%2018.7978%2013.1851%2018.2893%2014.2514C17.7123%2015.4617%2016.6607%2016.2539%2015.2598%2015.9147C14.8996%2015.8277%2014.6918%2015.6523%2014.3792%2015.5318C13.9578%2015.3695%2013.5952%2015.5832%2013.2532%2015.8185C12.7373%2016.1734%2012.9315%2016.6596%2012.8245%2017.1842C12.6409%2018.0839%2011.9441%2018.8171%2011.065%2019.067C10.6117%2019.1959%209.84887%2019.1981%209.39141%2019.0836C8.4037%2018.8361%207.64607%2017.958%207.53523%2016.9441C7.49476%2016.5742%207.58902%2016.2854%207.32308%2015.9735C7.19187%2015.8196%206.69937%2015.5305%206.50188%2015.4902C6.04986%2015.398%205.72578%2015.7328%205.31287%2015.8652C3.82342%2016.3428%202.52929%2015.4217%202.02239%2014.0461C1.64398%2013.02%201.97078%2011.8585%202.83516%2011.1952C3.14865%2010.9545%203.49065%2010.8822%203.61806%2010.456C3.6732%2010.2713%203.66994%209.6929%203.60529%209.51123C3.46539%209.11771%203.07829%209.00512%202.77975%208.76035C1.95774%208.08699%201.65675%206.96108%202.01913%205.9581C2.5282%204.54937%203.89188%203.62743%205.39111%204.16019C5.83471%204.31766%206.11668%204.66359%206.63092%204.46995C6.77353%204.41611%207.17937%204.18113%207.28314%204.07589C7.60586%203.74845%207.48797%203.35248%207.55126%202.94373C7.72919%201.79987%208.69789%200.915197%209.85376%200.842857ZM9.94884%202.5018C9.56989%202.53851%209.25532%202.82108%209.19229%203.19937C9.16486%203.36472%209.18822%203.53524%209.17708%203.70086C9.1252%204.47974%208.65742%205.18275%208.01633%205.5983C7.26386%206.08565%206.56246%206.34619%205.65651%206.09735C5.11484%205.94859%204.69379%205.46042%204.12034%205.79112C3.87178%205.93444%203.5477%206.47727%203.52705%206.76092C3.4749%207.47372%204.20237%207.62439%204.61392%208.05218C5.59974%209.07719%205.57936%2011.0361%204.54574%2012.0233C4.13419%2012.4166%203.48386%2012.53%203.52624%2013.2338C3.5439%2013.5261%203.87993%2014.0837%204.14234%2014.2215C4.687%2014.5076%205.00781%2014.128%205.48592%2013.9569C6.41631%2013.6238%207.1791%2013.8688%207.97259%2014.3711C8.58923%2014.7616%209.01925%2015.3504%209.14584%2016.0793C9.22761%2016.5508%209.06815%2017.0004%209.52045%2017.336C9.81899%2017.5574%2010.5122%2017.5612%2010.8249%2017.3711C11.322%2017.0687%2011.171%2016.6077%2011.2441%2016.1318C11.3649%2015.3428%2011.8183%2014.7508%2012.4825%2014.3393C13.2214%2013.8813%2013.9035%2013.6602%2014.7763%2013.9104C15.3131%2014.0643%2015.7271%2014.5544%2016.3041%2014.1946C16.5217%2014.0589%2016.8414%2013.5272%2016.865%2013.274C16.9308%2012.5637%2016.441%2012.5036%2016.011%2012.1579C15.4793%2011.7304%2015.1243%2011.0508%2015.0854%2010.3649C15.033%209.44215%2015.1686%208.62737%2015.8599%207.97086C16.2954%207.55749%2016.9248%207.4827%2016.8656%206.73318C16.8446%206.46748%2016.5328%205.95185%2016.3071%205.81016C15.7279%205.4471%2015.3416%205.91432%2014.8111%206.07777C13.9038%206.35707%2013.1736%206.10605%2012.4113%205.61734C11.8156%205.23551%2011.3913%204.66114%2011.2595%203.95568C11.1675%203.46262%2011.338%202.99132%2010.8635%202.65246C10.6209%202.47922%2010.2373%202.47379%209.94884%202.5018Z'%20fill='%2322201D'%20/%3e%3cpath%20d='M9.93089%206.68014C12.893%206.47073%2014.6535%209.89359%2012.7294%2012.1661C11.2965%2013.8582%208.61665%2013.6711%207.41135%2011.8193C6.04169%209.71491%207.43145%206.85691%209.93089%206.68014ZM10.0534%208.33935C8.85%208.44786%208.15512%209.7587%208.74949%2010.8201C9.37129%2011.9308%2010.9892%2011.9507%2011.6333%2010.8512C12.3206%209.67766%2011.4002%208.21806%2010.0534%208.33935Z'%20fill='%2322201D'%20/%3e%3c/svg%3e">Settings</button>
+      </nav>
+    </div>
+    <div class="content" id="settings" style="display: none;">
+      <h1>Settings</h1>
+      <div class="wrapper" style="margin: 20px auto;">
+        <h2>Get data</h2>
+        <p>
+          We gotta check settings
+        </p>
       </div>
     </div>
-    <div id="grid" class="wrapper" style="display: none;"></div>
+    <div class="content" id="transactions">
+      <h1>Transactions</h1>
+      <div class="wrapper" style="margin: 20px auto;">
+        <h2>Fetch data</h2>
+        <p>
+          This extension fetches pending Monarch transactions from Uber and Uber Eats, and tries to match the
+          data by price to rides and delivery orders from Uber. It also provides inline buttons to review 
+          these transactions, optionally tag them, and set descriptive notes.
+        </p>
+        <button id="match" class="mainButton">Fetch</button>
+        <span id="status"></span>
+        <div id="error" style="display: none;">
+          <p></p>
+          <button class="uberRide mainButton">Log in to Uber</button>
+          <button class="uberEats mainButton">Log in to Uber Eats</button>
+          <button class="monarch mainButton">Log in to Monarch</button>
+        </div>
+      </div>
+      <div id="grid" class="wrapper" style="display: none;"></div>
+    </div>
   </div>
   <script type="module" src="../app.js"></script>
 </body>
