@@ -39,6 +39,7 @@ type MonarchTransaction = {
   account?: {
     displayName: string,
   },
+  dataProviderDescription: string,
   merchant: {
     id: string,
     name: string,

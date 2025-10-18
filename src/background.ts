@@ -3,7 +3,7 @@ import { syncHeaders, getUberEatsHeaders, getUberRidesHeaders, getMonarchHeaders
 import { fetchUberEats } from './apis/eats';
 import { fetchUberRides } from './apis/rides';
 import { getPendingUberTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
-import { MERCHANT_IDS, SHORT_NAMES } from './constants';
+import { SHORT_NAMES } from './constants';
 
 // Handle opening the page when you click it
 chrome.action.onClicked.addListener(async () => {
@@ -180,7 +180,7 @@ function matchUberDataToTxns(
     let bestRide: AnnotatedUberRide | null = null;
     let bestEats: AnnotatedUberEatsOrder | null = null;
     let suggestedNote = '';
-    if (t.merchant.id == MERCHANT_IDS.UBER) {
+    if (t.dataProviderDescription.startsWith('UBER *TRIP')) {
       bestRide = pickBestRide(usdPool.filter(u => u._amtNum === target), t);
 
       if (!bestRide) {
@@ -196,7 +196,7 @@ function matchUberDataToTxns(
       if (bestRide) {
         suggestedNote = bestRide._norm.description;
       }
-    } else if (t.merchant.id == MERCHANT_IDS.UBER_EATS) {
+    } else if (t.dataProviderDescription.startsWith('UBER *EATS')) {
       // Exact match
       bestEats = pickBestEats(uberEatsPool.filter(u => u._amtNum === t.amount), t);
 
@@ -256,7 +256,7 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
       sendResponse({ data: [] });
       return;
     }
-    const oldestUberRide = pending.filter(x => x.merchant.id == MERCHANT_IDS.UBER).at(-1);
+    const oldestUberRide = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP')).at(-1);
     const [uberRides, uberEats] = await Promise.all([
       fetchUberRides(lookback, new Date(pending[0].date).getTime() + 1000 * 60 * 60 * 24 * 5),
       oldestUberRide ? fetchUberEats(new Date(oldestUberRide.date).getTime()) : [],
