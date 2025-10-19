@@ -235,44 +235,49 @@ async function matchUberDataToTxns(
 
 chrome.runtime.onConnect.addListener(async port => {
   if (port.name !== 'fetch') return;
-  port.postMessage({ progress: 'Checking headers…' });
-  await syncHeaders();
+  try {
+    port.postMessage({ progress: 'Checking headers…' });
+    await syncHeaders();
 
-  // If they're still not set after syncing, we're logged out and we need to get the user to log in
-  const uberEatsHeader = getUberEatsHeaders();
-  const uberRidesHeader = getUberRidesHeaders();
-  const monarchHeader = getMonarchHeaders();
+    // If they're still not set after syncing, we're logged out and we need to get the user to log in
+    const uberEatsHeader = getUberEatsHeaders();
+    const uberRidesHeader = getUberRidesHeaders();
+    const monarchHeader = getMonarchHeaders();
 
-  if (uberEatsHeader == null || uberRidesHeader == null || monarchHeader == null) {
-    port.postMessage({ data: { error: 'Not logged in.', headers: {
-      uberEatsHeader,
-      uberRidesHeader,
-      monarchHeader,
-    }}});
+    if (uberEatsHeader == null || uberRidesHeader == null || monarchHeader == null) {
+      port.postMessage({ data: { error: 'Not logged in.', headers: {
+        uberEatsHeader,
+        uberRidesHeader,
+        monarchHeader,
+      }}});
+      port.disconnect();
+      return;
+    }
+
+    port.postMessage({ progress: 'Fetching pending Uber transactions from Monarch…' });
+    const lookback = 200;
+    const pending = await getPendingUberTransactions({ limit: lookback });
+    if (pending.length === 0) {
+      port.postMessage({ data: [] });
+      port.disconnect();
+      return;
+    }
+
+    port.postMessage({ progress: 'Fetching Uber rides and Uber Eats…' });
+    const uberRideTransactions = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP'));
+    const oldestUberEats = pending.filter(x => x.dataProviderDescription.startsWith('UBER *EATS')).at(-1);
+    const [uberRides, uberEats] = await Promise.all([
+      uberRideTransactions.length > 0 ? fetchUberRides(lookback, new Date(uberRideTransactions.at(0)!.date).getTime(), new Date(uberRideTransactions.at(-1)!.date).getTime() ) : [],
+      oldestUberEats ? fetchUberEats(new Date(oldestUberEats.date).getTime()) : [],
+    ]);
+
+    port.postMessage({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
+
     port.disconnect();
-    return;
-  }
-
-  port.postMessage({ progress: 'Fetching pending Uber transactions from Monarch…' });
-  const lookback = 200;
-  const pending = await getPendingUberTransactions({ limit: lookback });
-  if (pending.length === 0) {
-    port.postMessage({ data: [] });
+  } catch (err: any) {
+    port.postMessage({ data: { error: String((err as Error)?.message || err) } });
     port.disconnect();
-    return;
   }
-
-  port.postMessage({ progress: 'Fetching Uber rides and Uber Eats…' });
-  const uberRideTransactions = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP'));
-  const oldestUberEats = pending.filter(x => x.dataProviderDescription.startsWith('UBER *EATS')).at(-1);
-  const [uberRides, uberEats] = await Promise.all([
-    uberRideTransactions.length > 0 ? fetchUberRides(lookback, new Date(uberRideTransactions.at(0)!.date).getTime(), new Date(uberRideTransactions.at(-1)!.date).getTime() ) : [],
-    oldestUberEats ? fetchUberEats(new Date(oldestUberEats.date).getTime()) : [],
-  ]);
-
-  port.postMessage({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
-
-  port.disconnect();
 });
 
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
