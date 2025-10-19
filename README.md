@@ -14,7 +14,7 @@ Additionally allows configuring shorthand of location names, enabling stuff like
 
 ## Installation
 
-1. Download the latest release zip (`viceroy.zip`) from the [releases page](https://github.com/alex-peck/viceroy-extension/releases)
+1. Download the latest release zip (`viceroy.zip`) from the [releases page](https://github.com/dado3212/viceroy-extension/releases)
 2. Unzip the file
 3. Open Chrome and navigate to `chrome://extensions`
 4. Enable developer mode
