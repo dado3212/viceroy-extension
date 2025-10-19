@@ -16,8 +16,8 @@ settings.addEventListener('click', async () => {
   settings.className = 'selected';
 
   await fetchCredentials();
-
   await fetchTags();
+  await fetchLocations();
 });
 
 /* === Settings configuration === */
@@ -25,9 +25,9 @@ settings.addEventListener('click', async () => {
 async function fetchCredentials() {
   const data = await chrome.runtime.sendMessage({ type: 'fetchCredentials' });
   document.querySelector('#credentials')!.innerHTML = `
-    Monarch: ${data.data.monarch ? 'Synced' : 'Unsynced'}<br />
-    Uber Eats: ${data.data.uberEats ? 'Synced' : 'Unsynced'}<br />
-    Uber Rides: ${data.data.uberRides ? 'Synced' : 'Unsynced'}
+    Monarch: <span class="status ${data.data.monarch ? 'synced' : 'unsynced'}">${data.data.monarch ? 'Synced' : 'Unsynced'}</span><br />
+    Uber Eats: <span class="status ${data.data.uberEats ? 'synced' : 'unsynced'}">${data.data.uberEats ? 'Synced' : 'Unsynced'}</span><br />
+    Uber Rides: <span class="status ${data.data.uberRides ? 'synced' : 'unsynced'}">${data.data.uberRides ? 'Synced' : 'Unsynced'}</span>
   `;
 }
 
@@ -67,6 +67,58 @@ async function renderTags(tags: any) {
 });
 
 // Locations
+async function fetchLocations() {
+  const data = await chrome.runtime.sendMessage({ type: 'fetchLocations' });
+  if (!data.error) {
+    let newHTML = '<div id="locations">';
+    for (const orig of Object.keys(data.data)) {
+      newHTML += `
+        <div class="location">
+          <input type="text" class="orig" value="${orig}">
+          <input type="text" class="short" value="${data.data[orig]}">
+          <button class="delete">X</button>
+        </div>
+      `;
+    }
+    newHTML += '</div>';
+    const locations = document.querySelector('#locationWrapper')!;
+    const b = document.createElement('button');
+    b.className = 'add';
+    b.textContent = '+ Add short name';
+    const deleteRow = (btn: Element) => {
+      btn.closest('div')!.remove();
+    };
+    b.onclick = () => {
+      const x = document.createElement('button');
+      x.textContent = 'X';
+      x.className = 'delete';
+      x.onclick = () => deleteRow(x);
+      const newLocation = document.createElement('div');
+      newLocation.className = 'location';
+      newLocation.innerHTML = `
+        <input type="text" class="orig" value="">
+        <input type="text" class="short" value="">
+      `;
+      newLocation.appendChild(x);
+      document.querySelector('#locations')!.appendChild(newLocation);
+    };
+    locations.innerHTML = newHTML;
+    locations.appendChild(b);
+    document.querySelectorAll('#locations button.delete').forEach(b => (b as HTMLButtonElement).addEventListener('click', () => deleteRow(b)));
+  }
+}
+
+(document.getElementById('saveLocations') as HTMLButtonElement).addEventListener('click', async () => {
+  const newLocations: { [key: string]: string } = {};
+  document.querySelectorAll('#locations .location').forEach(l => {
+    const orig = (l.querySelector('.orig') as HTMLInputElement)!.value;
+    const short = (l.querySelector('.short') as HTMLInputElement)!.value;
+    if (orig !== '' && short !== '') {
+      newLocations[orig] = short;
+    }
+  });
+  await chrome.runtime.sendMessage({ type: 'updateLocations', payload: { locations: newLocations } });
+});
 
 /* === Transaction configuration === */
 const grid = document.getElementById('grid') as HTMLDivElement;

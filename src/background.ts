@@ -3,7 +3,6 @@ import { syncHeaders, getUberEatsHeaders, getUberRidesHeaders, getMonarchHeaders
 import { fetchUberEats } from './apis/eats';
 import { fetchUberRides } from './apis/rides';
 import { getPendingUberTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
-import { SHORT_NAMES } from './constants';
 
 // Handle opening the page when you click it
 chrome.action.onClicked.addListener(async () => {
@@ -24,8 +23,8 @@ function daysBetween(a: string, b: string) {
   return Math.round((db.getTime() - da.getTime())/86400000);
 }
 
-function getShortName(waypoint: string): [string | null, boolean] {
-  const shortName = SHORT_NAMES[waypoint];
+function getShortName(locations: { [key: string ]: string }, waypoint: string): [string | null, boolean] {
+  const shortName = locations[waypoint];
   if (shortName !== undefined) {
     return [shortName, (shortName === 'my house' || shortName === 'my old apartment') ? true : false];
   }
@@ -41,11 +40,11 @@ function getShortName(waypoint: string): [string | null, boolean] {
   return [null, false]; 
 }
 
-function generateDescription(uber: UberRide) {
+function generateDescription(locations: { [key: string ]: string }, uber: UberRide) {
   let description = 'Uber from ';
 
   const waypoints = uber.details!.waypoints;
-  const [startName, _isHome] = getShortName(waypoints[0]);
+  const [startName, _isHome] = getShortName(locations, waypoints[0]);
   if (startName) {
     description += startName;
   } else {
@@ -57,7 +56,7 @@ function generateDescription(uber: UberRide) {
       description += '___';
     }
   }
-  const [endName, isHome] = getShortName(waypoints[waypoints.length - 1]); 
+  const [endName, isHome] = getShortName(locations, waypoints[waypoints.length - 1]); 
   if (endName) {
     description += (isHome ? ' back to ' : ' to ') + endName;
   } else {
@@ -65,17 +64,19 @@ function generateDescription(uber: UberRide) {
   }
 
   if (waypoints.length > 2) {
-    description += ' via ' + waypoints.slice(1, waypoints.length - 1).map(x => getShortName(x)[0] ?? x).join(' and ');
+    description += ' via ' + waypoints.slice(1, waypoints.length - 1).map(x => getShortName(locations, x)[0] ?? x).join(' and ');
   }
   return description;
 }
 
 // simple matcher by amount and ±2 days
-function matchUberDataToTxns(
+async function matchUberDataToTxns(
   uberRides: Array<UberRide>,
   uberEats: Array<UberEatsOrder>,
   txns: Array<MonarchTransaction>
-): Array<MatchedRow> {
+): Promise<Array<MatchedRow>> {
+  const { locations = {} }: { locations: { [key: string ]: string } } = await chrome.storage.sync.get('locations');
+
   // For Uber Rides
   const usdPool: Array<AnnotatedUberRide & { _amtNum: number }> = [];
   const diffCurrency: Array<AnnotatedUberRide> = [];
@@ -86,7 +87,7 @@ function matchUberDataToTxns(
       origAmount = newAmount;
     }
     const date = toISODate(u.details!.startTime);
-    const baseDesc = generateDescription(u);
+    const baseDesc = generateDescription(locations, u);
 
     const pushUSD = (amtStr: string, opts: Partial<AnnotatedUberRide["_norm"]> = {}) => {
       const ann: AnnotatedUberRide = { ...u, _norm: { amount: amtStr, date, description: opts.description ?? baseDesc, isTip: opts.isTip } };
@@ -250,7 +251,7 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
       return;
     }
     
-    const lookback = 10;
+    const lookback = 200;
     const pending = await getPendingUberTransactions({ limit: lookback });
     if (pending.length === 0) {
       sendResponse({ data: [] });
@@ -261,7 +262,7 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
       fetchUberRides(lookback, new Date(pending[0].date).getTime() + 1000 * 60 * 60 * 24 * 5),
       oldestUberRide ? fetchUberEats(new Date(oldestUberRide.date).getTime()) : [],
     ]);
-    sendResponse({ data: matchUberDataToTxns(uberRides, uberEats, pending) });
+    sendResponse({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
   })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
   return true;
 });
@@ -306,7 +307,9 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   return true;
 });
 
-// Tags
+/**
+ * TAGS
+ */
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
   (async () => {
     if (msg.type !== 'fetchTags') return;
@@ -343,9 +346,34 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
       newTags[monarchTag.id] = { ...monarchTag, checked: tags[monarchTag.id]?.checked ?? false };
     }
 
-    await chrome.storage.sync.set({ tags: newTags })
+    await chrome.storage.sync.set({ tags: newTags });
     
     sendResponse({ data: newTags });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+/**
+ * LOCATIONS
+ */
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'fetchLocations') return;
+
+    const { locations = {} }: { locations: { [key: string ]: string } } = await chrome.storage.sync.get('locations');
+    
+    sendResponse({ data: locations });
+  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
+  return true;
+});
+
+chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
+  (async () => {
+    if (msg.type !== 'updateLocations') return;
+    
+    await chrome.storage.sync.set({ locations: msg.payload.locations });
+
+    sendResponse({ data: { ok: true } });
   })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
   return true;
 });
