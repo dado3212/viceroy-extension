@@ -233,38 +233,45 @@ async function matchUberDataToTxns(
   return out;
 }
 
-chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
-  (async () => {
-    if (msg.type !== 'fetch') return;
-    await syncHeaders();
+chrome.runtime.onConnect.addListener(async port => {
+  if (port.name !== 'fetch') return;
+  port.postMessage({ progress: 'Checking headers…' });
+  await syncHeaders();
 
-    // If they're still not set after syncing, we're logged out and we need to get the user to log in
-    const uberEatsHeader = getUberEatsHeaders();
-    const uberRidesHeader = getUberRidesHeaders();
-    const monarchHeader = getMonarchHeaders();
-    if (uberEatsHeader == null || uberRidesHeader == null || monarchHeader == null) {
-      sendResponse({ error: 'Not logged in.', headers: {
-        uberEatsHeader,
-        uberRidesHeader,
-        monarchHeader,
-      }});
-      return;
-    }
-    
-    const lookback = 200;
-    const pending = await getPendingUberTransactions({ limit: lookback });
-    if (pending.length === 0) {
-      sendResponse({ data: [] });
-      return;
-    }
-    const oldestUberRide = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP')).at(-1);
-    const [uberRides, uberEats] = await Promise.all([
-      fetchUberRides(lookback, new Date(pending[0].date).getTime() + 1000 * 60 * 60 * 24 * 5),
-      oldestUberRide ? fetchUberEats(new Date(oldestUberRide.date).getTime()) : [],
-    ]);
-    sendResponse({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
-  })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
-  return true;
+  // If they're still not set after syncing, we're logged out and we need to get the user to log in
+  const uberEatsHeader = getUberEatsHeaders();
+  const uberRidesHeader = getUberRidesHeaders();
+  const monarchHeader = getMonarchHeaders();
+
+  if (uberEatsHeader == null || uberRidesHeader == null || monarchHeader == null) {
+    port.postMessage({ data: { error: 'Not logged in.', headers: {
+      uberEatsHeader,
+      uberRidesHeader,
+      monarchHeader,
+    }}});
+    port.disconnect();
+    return;
+  }
+
+  port.postMessage({ progress: 'Fetching pending Uber transactions from Monarch…' });
+  const lookback = 200;
+  const pending = await getPendingUberTransactions({ limit: lookback });
+  if (pending.length === 0) {
+    port.postMessage({ data: [] });
+    port.disconnect();
+    return;
+  }
+
+  port.postMessage({ progress: 'Fetching Uber rides and Uber Eats…' });
+  const oldestUberRide = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP')).at(-1);
+  const [uberRides, uberEats] = await Promise.all([
+    fetchUberRides(lookback, new Date(pending[0].date).getTime() + 1000 * 60 * 60 * 24 * 5),
+    oldestUberRide ? fetchUberEats(new Date(oldestUberRide.date).getTime()) : [],
+  ]);
+
+  port.postMessage({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
+
+  port.disconnect();
 });
 
 chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {

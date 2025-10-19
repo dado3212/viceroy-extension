@@ -233,21 +233,29 @@ async function loadAndMatch() {
   error.style.display = 'none';
   statusEl.textContent = 'Loading…';
   try {
-    const data = await chrome.runtime.sendMessage({ type: 'fetch' });
-    if (data.error) {
-      statusEl.textContent = `Error: ${data.error}`;
-      if (data.headers) {
-        let text = 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
-        uberRide.style.display = !data.headers.uberRidesHeader ? 'inline-block' : 'none';
-        uberEats.style.display = !data.headers.uberEatsHeader ? 'inline-block' : 'none';
-        monarch.style.display = !data.headers.monarchHeader ? 'inline-block' : 'none';        
-        error.querySelector('p')!.innerText = text;
-        error.style.display = 'block';
+    const port = chrome.runtime.connect({ name: 'fetch' });
+    port.onMessage.addListener(async msg => {
+      if (msg.progress) {
+        statusEl.textContent = msg.progress;
       }
-      return;
-    }
-    await render(data.data);
-    statusEl.textContent = `Loaded ${data.data.length}`;
+      if (msg.data !== undefined) {
+        const data = msg.data;
+        if (data.error) {
+          statusEl.textContent = `Error: ${data.error}`;
+          if (data.headers) {
+            let text = 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
+            uberRide.style.display = !data.headers.uberRidesHeader ? 'inline-block' : 'none';
+            uberEats.style.display = !data.headers.uberEatsHeader ? 'inline-block' : 'none';
+            monarch.style.display = !data.headers.monarchHeader ? 'inline-block' : 'none';        
+            error.querySelector('p')!.innerText = text;
+            error.style.display = 'block';
+          }
+          return;
+        }
+        await render(data);
+        statusEl.textContent = `Loaded ${data.length}`;
+      }
+    });
   } catch (e: any) {
     console.log(e);
     statusEl.textContent = 'Error: ' + (e?.message || String(e));

@@ -109,6 +109,10 @@ export const syncHeaders = async (clearFromStorage = false) => {
       monarch = await chrome.tabs.create({ url: 'https://app.monarch.com/', active: false });
     }
   }
+  // We're good!
+  if (uberEats === null && uberRides === null && monarch === null) {
+    return;
+  }
   // And if any tabs were opened, wait for them to complete
   await new Promise((resolve: any) => {
     const listener = (tabId: number, info: chrome.tabs.TabChangeInfo) => {
