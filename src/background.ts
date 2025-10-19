@@ -263,10 +263,11 @@ chrome.runtime.onConnect.addListener(async port => {
   }
 
   port.postMessage({ progress: 'Fetching Uber rides and Uber Eats…' });
-  const oldestUberRide = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP')).at(-1);
+  const uberRideTransactions = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP'));
+  const oldestUberEats = pending.filter(x => x.dataProviderDescription.startsWith('UBER *EATS')).at(-1);
   const [uberRides, uberEats] = await Promise.all([
-    fetchUberRides(lookback, new Date(pending[0].date).getTime() + 1000 * 60 * 60 * 24 * 5),
-    oldestUberRide ? fetchUberEats(new Date(oldestUberRide.date).getTime()) : [],
+    uberRideTransactions.length > 0 ? fetchUberRides(lookback, new Date(uberRideTransactions.at(0)!.date).getTime(), new Date(uberRideTransactions.at(-1)!.date).getTime() ) : [],
+    oldestUberEats ? fetchUberEats(new Date(oldestUberEats.date).getTime()) : [],
   ]);
 
   port.postMessage({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
