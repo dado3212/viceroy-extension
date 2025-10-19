@@ -32,7 +32,12 @@ async function fetchCredentials() {
 }
 
 (document.getElementById('credentialsSync') as HTMLButtonElement).addEventListener('click', async () => {
+  document.querySelectorAll('#credentials span').forEach(s => {
+    s.classList.remove('synced', 'unsynced');
+    s.textContent = 'Syncing...';
+  })
   await chrome.runtime.sendMessage({ type: 'updateCredentials' });
+  await fetchCredentials();
 });
 
 // Tags
