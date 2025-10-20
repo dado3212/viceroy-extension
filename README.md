@@ -1,4 +1,4 @@
-# <img src='./public/icons/icon-128.png' height='34' /> Viceroy
+# <img src='./public/icons/icon-128.png' height='24' /> Viceroy
 
 A Chrome extension in the vein of the [official Monarch retail purchase sync extension](https://chromewebstore.google.com/detail/monarch-money-retail-purc/imfcckkmcklambpijbgcebggegggkgla), but for other categories of transactions. Currently it only works for Uber and Uber Eats, but may add additional options in the future.
 
