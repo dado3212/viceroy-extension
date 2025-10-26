@@ -1,5 +1,5 @@
 import './headers';
-import { syncHeaders, getUberEatsHeaders, getUberRidesHeaders, getMonarchHeaders, updateHeadersFromCache } from './headers';
+import { syncHeaders, getHeader, updateHeadersFromCache, Header } from './headers';
 import { fetchUberEats } from './apis/eats';
 import { fetchUberRides } from './apis/rides';
 import { getPendingUberTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
@@ -240,16 +240,18 @@ chrome.runtime.onConnect.addListener(async port => {
     await syncHeaders();
 
     // If they're still not set after syncing, we're logged out and we need to get the user to log in
-    const uberEatsHeader = getUberEatsHeaders();
-    const uberRidesHeader = getUberRidesHeaders();
-    const monarchHeader = getMonarchHeaders();
+    const headerStatus: Partial<Record<Header, Record<string, string>>> = {};
+    let missingHeader = false;
+    for (const headerName of Object.values(Header)) {
+      const header = getHeader(headerName);
+      headerStatus[headerName] = header;
+      if (header == null) {
+        missingHeader = true;
+      }
+    }    
 
-    if (uberEatsHeader == null || uberRidesHeader == null || monarchHeader == null) {
-      port.postMessage({ data: { error: 'Not logged in.', headers: {
-        uberEatsHeader,
-        uberRidesHeader,
-        monarchHeader,
-      }}});
+    if (missingHeader) {
+      port.postMessage({ data: { error: 'Not logged in.', headers: headerStatus}});
       port.disconnect();
       return;
     }
@@ -297,15 +299,12 @@ chrome.runtime.onMessage.addListener((msg, _s, sendResponse) => {
     if (msg.type !== 'fetchCredentials') return;
     await updateHeadersFromCache();
     // If they're still not set after syncing, we're logged out and we need to get the user to log in
-    const uberEatsHeader = getUberEatsHeaders();
-    const uberRidesHeader = getUberRidesHeaders();
-    const monarchHeader = getMonarchHeaders();
+    const headerStatus: Partial<Record<Header, boolean>> = {};
+    for (const headerName of Object.values(Header)) {
+      headerStatus[headerName] = getHeader(headerName) != null;
+    }
     
-    sendResponse({ data: {
-      uberEats: uberEatsHeader != null,
-      uberRides: uberRidesHeader != null,
-      monarch: monarchHeader != null
-    } });
+    sendResponse({ data: headerStatus });
   })().catch(err => sendResponse({ error: String((err as Error)?.message || err) }));
   return true;
 });

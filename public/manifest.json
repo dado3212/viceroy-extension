@@ -4,7 +4,7 @@
   "author": "Alex Beals",
   "description": "Automatically match Monarch transactions with other platforms (currently just Uber and Uber Eats).",
   "homepage_url": "https://alexbeals.com",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "action": { "default_title": "Open Viceroy" },
   "icons": {
     "32": "icons/icon-32.png",

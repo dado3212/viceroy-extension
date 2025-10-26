@@ -1,5 +1,5 @@
 
-import { getUberEatsHeaders } from '../headers';
+import { getHeader, Header } from '../headers';
 
 export async function fetchUberEats(oldestUnixTime: number): Promise<Array<UberEatsOrder>> {
   const url = "https://www.ubereats.com/_p/api/getPastOrdersV1";
@@ -11,7 +11,7 @@ export async function fetchUberEats(oldestUnixTime: number): Promise<Array<UberE
   const allOrders: Array<UberEatsOrder> = [];
   let numRequests = 0;
   while (numRequests < 100) {
-    const resp = await fetch(url, { method: 'POST', headers: getUberEatsHeaders()!, body: JSON.stringify(body) });
+    const resp = await fetch(url, { method: 'POST', headers: getHeader(Header.UberEats)!, body: JSON.stringify(body) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
     body.lastWorkflowUUID = json.data.orderUuids.at(-1);

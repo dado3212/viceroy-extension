@@ -1,4 +1,4 @@
-import { getUberRidesHeaders } from '../headers';
+import { getHeader, Header } from '../headers';
 
 export async function fetchUberRides(limit = 5, newestRideMs: number, oldestRideMs: number): Promise<Array<UberRide>> {
   const allRides: Array<UberRide> = [];
@@ -103,7 +103,7 @@ async function fetchTripDetails(uuid: string): Promise<UberRideDetails> {
 
 // ===== GraphQL helpers =====
 async function uberQuery(body: unknown): Promise<any> {
-  const resp = await fetch('https://riders.uber.com/graphql', { method: 'POST', headers: getUberRidesHeaders()!, body: JSON.stringify(body) });
+  const resp = await fetch('https://riders.uber.com/graphql', { method: 'POST', headers: getHeader(Header.UberRides)!, body: JSON.stringify(body) });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
     throw new Error(`HTTP ${resp.status}${text ? `: ${text.slice(0, 200)}` : ''}`);

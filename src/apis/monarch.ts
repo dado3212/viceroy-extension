@@ -1,4 +1,4 @@
-import { getMonarchHeaders } from '../headers';
+import { getHeader, Header } from '../headers';
 
 // pending Uber-ish transactions needing review
 export async function getPendingUberTransactions({ limit = 200 } = {}): Promise<Array<MonarchTransaction>> {
@@ -67,7 +67,7 @@ async function monarchQuery(data: any) {
     method: 'POST',
     mode: 'cors',
     credentials: 'include',
-    headers: getMonarchHeaders()!,
+    headers: getHeader(Header.Monarch)!,
     body: JSON.stringify(data),
   });
   if (!r.ok) { 

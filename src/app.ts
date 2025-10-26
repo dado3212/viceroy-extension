@@ -1,3 +1,17 @@
+import { Header, HeaderInfo } from './headers';
+
+// Set up the buttons
+const buttons: Partial<Record<Header, HTMLButtonElement>> = {};
+for (const header of Object.values(Header)) {
+  const button = document.createElement('button');
+  button.className = 'mainButton';
+  button.style.backgroundColor = HeaderInfo[header].buttonColor;
+  button.textContent = `Log in to ${HeaderInfo[header].buttonName}`;
+  button.addEventListener('click', async () => window.open(HeaderInfo[header].cookieURL, '_blank'));
+  buttons[header] = button;
+  (document.getElementById('error') as HTMLDivElement).appendChild(button);
+}
+
 // Navbar configuration
 const transactions = document.getElementById('transactions-button') as HTMLDivElement;
 const settings = document.getElementById('settings-button') as HTMLDivElement;
@@ -24,11 +38,11 @@ settings.addEventListener('click', async () => {
 // Credentials
 async function fetchCredentials() {
   const data = await chrome.runtime.sendMessage({ type: 'fetchCredentials' });
-  document.querySelector('#credentials')!.innerHTML = `
-    Monarch: <span class="status ${data.data.monarch ? 'synced' : 'unsynced'}">${data.data.monarch ? 'Synced' : 'Unsynced'}</span><br />
-    Uber Eats: <span class="status ${data.data.uberEats ? 'synced' : 'unsynced'}">${data.data.uberEats ? 'Synced' : 'Unsynced'}</span><br />
-    Uber Rides: <span class="status ${data.data.uberRides ? 'synced' : 'unsynced'}">${data.data.uberRides ? 'Synced' : 'Unsynced'}</span>
-  `;
+  let newHTML = '';
+  for (const header of Object.values(Header)) {
+    newHTML += `${HeaderInfo[header].buttonName}: <span class="status ${data.data[header] ? 'synced' : 'unsynced'}">${data.data[header] ? 'Synced' : 'Unsynced'}</span><br />`;
+  }
+  document.querySelector('#credentials')!.innerHTML = newHTML;
 }
 
 (document.getElementById('credentialsSync') as HTMLButtonElement).addEventListener('click', async () => {
@@ -129,9 +143,6 @@ async function fetchLocations() {
 const grid = document.getElementById('grid') as HTMLDivElement;
 const statusEl = document.getElementById('status') as HTMLSpanElement;
 const error = document.getElementById('error') as HTMLParagraphElement;
-const uberRide = error.querySelector('button.uberRide') as HTMLButtonElement;
-const uberEats = error.querySelector('button.uberEats') as HTMLButtonElement;
-const monarch = error.querySelector('button.monarch') as HTMLButtonElement;
 
 async function render(rows: any[]) {
   grid.style.display = 'block';
@@ -244,9 +255,9 @@ async function loadAndMatch() {
           statusEl.textContent = `Error: ${data.error}`;
           if (data.headers) {
             let text = 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
-            uberRide.style.display = !data.headers.uberRidesHeader ? 'inline-block' : 'none';
-            uberEats.style.display = !data.headers.uberEatsHeader ? 'inline-block' : 'none';
-            monarch.style.display = !data.headers.monarchHeader ? 'inline-block' : 'none';        
+            for (const header of Object.keys(data.headers)) {
+              buttons[header as Header]!.style.display = !data.headers[header] ? 'inline-block' : 'none';
+            }     
             error.querySelector('p')!.innerText = text;
             error.style.display = 'block';
           }
@@ -263,7 +274,3 @@ async function loadAndMatch() {
 }
 
 (document.getElementById('match') as HTMLButtonElement).addEventListener('click', loadAndMatch);
-
-uberRide.addEventListener('click', async () => window.open('https://riders.uber.com/trips', '_blank'));
-uberEats.addEventListener('click', async () => window.open('https://www.ubereats.com/orders', '_blank'));
-monarch.addEventListener('click', async () => window.open('https://app.monarch.com', '_blank'));
