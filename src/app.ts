@@ -148,7 +148,7 @@ async function render(rows: any[]) {
   grid.style.display = 'block';
   grid.innerHTML = `<div class="header">
       <div class="head c1">Monarch</div>
-      <div class="head c2">Uber</div>
+      <div class="head c2">Matched details</div>
       <div class="head c3">Suggested note</div>
       <div class="head c4">Actions</div>
       <div class="head c5">Status</div>
@@ -160,23 +160,37 @@ async function render(rows: any[]) {
 
     const monCol = document.createElement('div');
     monCol.className = 'c1';
-    monCol.innerHTML = `<b>${new Date(r.txn.date).toLocaleDateString('en-US')}</b><br />${(-1 * r.txn.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}`;
+    monCol.innerHTML = `<b>${new Date(`${r.txn.date}T00:00:00`).toLocaleDateString('en-US')}</b><br />${(-1 * r.txn.amount).toLocaleString(undefined, { style: 'currency', currency: 'USD' })}`;
     if (r.warn) monCol.innerHTML += '<br /><b style="color:red">SOFT MATCH</b>';
 
-    const uberCol = document.createElement('div');
-    uberCol.className = 'c2';
+    let matched = true;
+    const detailsCol = document.createElement('div');
+    detailsCol.className = 'c2';
     if (r.ride) {
       let html = `<b>${r.ride.location}</b><br />${r.ride.date}<br />${r.ride.cost}<br /><img src="${r.ride.details.map}"><ul>`;
-      r.ride.details.waypoints.forEach((w: string) => html += `<li>${w}</li>`); uberCol.innerHTML = html + '</ul>';
+      r.ride.details.waypoints.forEach((w: string) => html += `<li>${w}</li>`); detailsCol.innerHTML = html + '</ul>';
     } else if (r.eats) {
-      uberCol.innerHTML = `<b>${r.eats.storeName}</b><br />${new Date(r.eats.date).toLocaleString('en-US', {
+      detailsCol.innerHTML = `<b>${r.eats.storeName}</b><br />${new Date(r.eats.date).toLocaleString('en-US', {
         month: 'short',
         day: 'numeric',
         hour: 'numeric',
         minute: '2-digit',
         hour12: true
       }).replace(',', ' •')}<br />$${(r.eats.cost / 100).toFixed(2)}<br />${r.eats.items.join(' • ')}`;
-    } else uberCol.textContent = '- no match -';
+    } else if (r.bayWheels) {
+      for (const ride of r.bayWheels) {
+        detailsCol.innerHTML += `<b>Ride</b><br />${new Date(ride.date).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true
+        }).replace(',', ' •')}<br />${ride.cost}<br />From ${ride.details?.startAddress} to ${ride.details?.endAddress}.<br />`;
+      }
+    } else {
+      detailsCol.textContent = '- no match -';
+      matched = false;
+    };
 
     const noteCol = document.createElement('div');
     noteCol.className = 'c3';
@@ -191,8 +205,8 @@ async function render(rows: any[]) {
     resultCol.appendChild(result);
     let lastPressed: HTMLButtonElement | null = null;
     const act = async (e: MouseEvent, tag: string | null) => {
-      if (!r.ride && !r.eats) {
-        if (lastPressed === e.target) { } else { result.textContent = 'No matching Uber transaction'; lastPressed = e.target as HTMLButtonElement; return; }
+      if (!matched) {
+        if (lastPressed === e.target) { } else { result.textContent = 'No matching transaction'; lastPressed = e.target as HTMLButtonElement; return; }
       }
       result.textContent = '…';
       result.classList.remove('saved', 'error');
@@ -235,7 +249,7 @@ async function render(rows: any[]) {
       }
     }
 
-    wrap.appendChild(monCol); wrap.appendChild(uberCol); wrap.appendChild(noteCol); wrap.appendChild(actions); wrap.appendChild(resultCol);
+    wrap.appendChild(monCol); wrap.appendChild(detailsCol); wrap.appendChild(noteCol); wrap.appendChild(actions); wrap.appendChild(resultCol);
     grid.appendChild(wrap);
   });
 }

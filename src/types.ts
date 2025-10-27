@@ -1,3 +1,14 @@
+type BayWheelsRide = {
+  details: {
+    startAddress: string,
+    endAddress: string,
+  } | null,
+  error?: string,
+  cost: string,
+  date: string,
+  id: string,
+};
+
 type UberEatsOrder = {
   storeName: string,
   cost: number, // cents - 3142
@@ -62,5 +73,6 @@ type MatchedRow = {
   warn: boolean,
   ride: AnnotatedUberRide | null,
   eats: UberEatsOrder | null,
+  bayWheels: Array<BayWheelsRide>,
   suggestedNote: string,
 };

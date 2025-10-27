@@ -2,7 +2,8 @@ import './headers';
 import { syncHeaders, getHeader, updateHeadersFromCache, Header } from './headers';
 import { fetchUberEats } from './apis/eats';
 import { fetchUberRides } from './apis/rides';
-import { getPendingUberTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
+import { fetchBayWheels } from './apis/baywheels';
+import { getPendingTransactions, applyMonarchDecision, fetchMonarchTags } from './apis/monarch';
 
 // Handle opening the page when you click it
 chrome.action.onClicked.addListener(async () => {
@@ -70,9 +71,10 @@ function generateDescription(locations: { [key: string ]: string }, uber: UberRi
 }
 
 // simple matcher by amount and ±2 days
-async function matchUberDataToTxns(
+async function matchDataToTxns(
   uberRides: Array<UberRide>,
   uberEats: Array<UberEatsOrder>,
+  bayWheels: Array<any>,
   txns: Array<MonarchTransaction>
 ): Promise<Array<MatchedRow>> {
   const { locations = {} }: { locations: { [key: string ]: string } } = await chrome.storage.sync.get('locations');
@@ -173,6 +175,57 @@ async function matchUberDataToTxns(
     return best;
   };
 
+  // For Bay wheels
+  type AnnotatedBayWheelsRide = BayWheelsRide & {
+    _amtNum: number,
+    _dayString: string,
+  };
+
+  const bayWheelsPool: Array<AnnotatedBayWheelsRide> = [];
+  bayWheels.forEach(u => {
+    bayWheelsPool.push({
+      ...u,
+      _amtNum: -1 * parseFloat(u.cost.replace(/^\$/, '')),
+      _dayString: new Date(u.date).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+      })
+      .replace(/\//g, '-'),
+    });
+  });
+
+  const pickBestBaywheelsRides = (t: MonarchTransaction): Array<AnnotatedBayWheelsRide> => {
+    const [, rideNum, date] = t.dataProviderDescription.match(/\*(\d+)\s+RIDES?\s+(\d{1,2}-\d{1,2})/) || [];
+    
+    // If there's only one transaction, try to find it
+    if (!rideNum || parseInt(rideNum) === 1) {
+      let best: AnnotatedBayWheelsRide | null = null;
+      let bestDelta = 99;
+      for (const u of bayWheelsPool.filter(u => u._amtNum === t.amount)) {
+        const delta = Math.abs(daysBetween(t.date, u.date));
+        if (delta <= 5 && delta < bestDelta) { best = u; bestDelta = delta; }
+      }
+      if (best) {
+        return [best];
+      } else {
+        return [];
+      }
+    // Otherwise there are *multiple* transactions
+    } else {
+      const sameDay = bayWheelsPool.filter(u => u._dayString === date);
+      let total = 0;
+      for (const ride of sameDay) {
+        total += ride._amtNum;
+      }
+      if (Math.abs(total - t.amount) < 1e-9) {
+        return sameDay.sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      } else {
+        console.log('Failed to find the transaction set', t, bayWheelsPool);
+        return [];
+      }
+    }
+  };
+
   const out: Array<MatchedRow> = [];
   txns.forEach(t => {
     const target = t.amount;
@@ -180,6 +233,7 @@ async function matchUberDataToTxns(
     let warn = false;
     let bestRide: AnnotatedUberRide | null = null;
     let bestEats: AnnotatedUberEatsOrder | null = null;
+    let bestBayWheelsRides: Array<AnnotatedBayWheelsRide> = [];
     let suggestedNote = '';
     if (t.dataProviderDescription.startsWith('UBER *TRIP')) {
       bestRide = pickBestRide(usdPool.filter(u => u._amtNum === target), t);
@@ -213,6 +267,25 @@ async function matchUberDataToTxns(
       if (bestEats) {
         suggestedNote = bestEats.note;
       }
+    } else if (t.dataProviderDescription.startsWith('LYFT *')) {
+      // Exact match
+      bestBayWheelsRides = pickBestBaywheelsRides(t);
+
+      if (bestBayWheelsRides.length > 0) {
+        const rideText = bestBayWheelsRides.map((r: any) => {
+          const start = r.details.startAddress;
+          const end = r.details.endAddress;
+
+          const [startName,] = getShortName(locations, start);
+          const [endName,] = getShortName(locations, end);
+          return `${startName ?? start} to ${endName ?? end}`;
+        });
+        if (bestBayWheelsRides.length === 1) {
+          suggestedNote = `Lyft bike from ${rideText[0]}`;
+        } else {
+          suggestedNote = 'Multiple Lyft bike rides: ' + rideText.join(', ');
+        }
+      }
     } else {
       throw new Error('how did you get a transaction from a different merchant?');
     }
@@ -227,6 +300,7 @@ async function matchUberDataToTxns(
       warn,
       ride: bestRide,
       eats: bestEats,
+      bayWheels: bestBayWheelsRides,
       suggestedNote,
     });
   });
@@ -256,24 +330,27 @@ chrome.runtime.onConnect.addListener(async port => {
       return;
     }
 
-    port.postMessage({ progress: 'Fetching pending Uber transactions from Monarch…' });
+    port.postMessage({ progress: 'Fetching pending transactions from Monarch…' });
     const lookback = 200;
-    const pending = await getPendingUberTransactions({ limit: lookback });
+    const pending = await getPendingTransactions({ limit: lookback });
     if (pending.length === 0) {
       port.postMessage({ data: [] });
       port.disconnect();
       return;
     }
 
-    port.postMessage({ progress: 'Fetching Uber rides and Uber Eats…' });
+    port.postMessage({ progress: 'Fetching Uber and Lyft data…' });
     const uberRideTransactions = pending.filter(x => x.dataProviderDescription.startsWith('UBER *TRIP'));
     const oldestUberEats = pending.filter(x => x.dataProviderDescription.startsWith('UBER *EATS')).at(-1);
-    const [uberRides, uberEats] = await Promise.all([
-      uberRideTransactions.length > 0 ? fetchUberRides(lookback, new Date(uberRideTransactions.at(0)!.date).getTime(), new Date(uberRideTransactions.at(-1)!.date).getTime() ) : [],
-      oldestUberEats ? fetchUberEats(new Date(oldestUberEats.date).getTime()) : [],
+    const oldestBayWheels = pending.filter(x => x.dataProviderDescription.startsWith('LYFT *')).at(-1);
+    // Look back 5 days older than the oldest transaction
+    const [uberRides, uberEats, bayWheels] = await Promise.all([
+      uberRideTransactions.length > 0 ? fetchUberRides(lookback, new Date(uberRideTransactions.at(0)!.date).getTime(), new Date(uberRideTransactions.at(-1)!.date).getTime()  - 60 * 60 * 24 * 5) : [],
+      oldestUberEats ? fetchUberEats(new Date(oldestUberEats.date).getTime() - 60 * 60 * 24 * 5) : [],
+      oldestBayWheels ? fetchBayWheels(new Date(oldestBayWheels.date).getTime() - 60 * 60 * 24 * 5) : [],
     ]);
 
-    port.postMessage({ data: await matchUberDataToTxns(uberRides, uberEats, pending) });
+    port.postMessage({ data: await matchDataToTxns(uberRides, uberEats, bayWheels, pending) });
 
     port.disconnect();
   } catch (err: any) {

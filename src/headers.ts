@@ -6,6 +6,7 @@ export enum Header {
   Monarch = 'monarchHeaders',
   UberEats = 'uberEatsHeaders',
   UberRides = 'uberRidesHeaders',
+  BayWheels = 'baywheelsHeaders',
 }
 
 export const HeaderInfo: Record<Header, {
@@ -38,6 +39,13 @@ export const HeaderInfo: Record<Header, {
     cookieURL: 'https://riders.uber.com/trips',
     buttonName: 'Uber',
     buttonColor: 'black',
+  },
+  [Header.BayWheels]: {
+    api: 'https://account.baywheels.com/bikesharefe-gql',
+    initiatorFilter: 'account.baywheels.com',
+    cookieURL: 'https://account.baywheels.com/profile',
+    buttonName: 'BayWheels',
+    buttonColor: '#ff00bf',
   },
 };
 

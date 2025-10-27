@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "origin",  "operation": "set", "value": "https://account.baywheels.com" },
+        { "header": "referer", "operation": "set", "value": "https://account.baywheels.com/" }
+      ]
+    },
+    "condition": {
+      "regexFilter": "^https://account\\.baywheels\\.com/.*",
+      "resourceTypes": ["xmlhttprequest", "other"]
+    }
+  }
+]

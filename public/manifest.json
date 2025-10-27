@@ -26,6 +26,7 @@
     "tabs",
     "scripting",
     "webRequest",
+    "declarativeNetRequest",
     "cookies",
     "storage"
   ],
@@ -34,8 +35,14 @@
     "https://www.ubereats.com/*",
     "https://api.monarch.com/*",
     "https://app.monarch.com/*",
-    "https://static-maps.uber.com/*"
+    "https://static-maps.uber.com/*",
+    "https://account.baywheels.com/*"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      { "id": "rules", "enabled": true, "path": "rules.json" }
+    ]
+  },
   "background": {
     "service_worker": "background.js",
     "type": "module"

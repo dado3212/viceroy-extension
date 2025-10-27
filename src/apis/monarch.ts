@@ -1,24 +1,44 @@
 import { getHeader, Header } from '../headers';
 
-// pending Uber-ish transactions needing review
-export async function getPendingUberTransactions({ limit = 200 } = {}): Promise<Array<MonarchTransaction>> {
-  const data = await monarchQuery({
-    operationName: 'Web_GetTransactionsList',
-    variables: {
-      orderBy: 'date',
-      limit,
-      filters: {
-         search: 'UBER *', // UBER *TRIP for rides, UBER *EATS for food, UBER *ONE for Uber One (currently filtered)
-         categories: [],
-         accounts: [],
-         tags: [],
-         merchants: [],
-         needsReview: true,
-       },
-    },
-    query: `query Web_GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput, $orderBy: TransactionOrdering) {\n  allTransactions(filters: $filters) {\n    totalCount\n    totalSelectableCount\n    results(offset: $offset, limit: $limit, orderBy: $orderBy) {\n      id\n      ...TransactionOverviewFields\n      __typename\n    }\n    __typename\n  }\n  transactionRules {\n    id\n    __typename\n  }\n}\n\nfragment TransactionOverviewFields on Transaction {\n  id\n  amount\n  pending\n  date\n  hideFromReports\n  hiddenByAccount\n  plaidName\n  notes\n  isRecurring\n  reviewStatus\n  needsReview\n  isSplitTransaction\n  dataProviderDescription\n  attachments {\n    id\n    __typename\n  }\n  goal {\n    id\n    name\n    __typename\n  }\n  category {\n    id\n    name\n    icon\n    group {\n      id\n      type\n      __typename\n    }\n    __typename\n  }\n  merchant {\n    name\n    id\n    transactionsCount\n    logoUrl\n    recurringTransactionStream {\n      frequency\n      isActive\n      __typename\n    }\n    __typename\n  }\n  tags {\n    id\n    name\n    color\n    order\n    __typename\n  }\n  account {\n    id\n    displayName\n    icon\n    logoUrl\n    __typename\n  }\n  __typename\n}`
-  });
-  return (data?.allTransactions?.results || []).filter((x: any) => x.dataProviderDescription.startsWith('UBER *TRIP') || x.dataProviderDescription.startsWith('UBER *EATS'));
+export async function getPendingTransactions({ limit = 200 } = {}): Promise<Array<MonarchTransaction>> {
+  const [uberData, lyftData] = await Promise.all([
+    monarchQuery({
+      operationName: 'Web_GetTransactionsList',
+      variables: {
+        orderBy: 'date',
+        limit,
+        filters: {
+          search: 'UBER *', // UBER *TRIP for rides, UBER *EATS for food, UBER *ONE for Uber One (currently filtered)
+          categories: [],
+          accounts: [],
+          tags: [],
+          merchants: [],
+          needsReview: true,
+        },
+      },
+      query: `query Web_GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput, $orderBy: TransactionOrdering) {\n  allTransactions(filters: $filters) {\n    totalCount\n    totalSelectableCount\n    results(offset: $offset, limit: $limit, orderBy: $orderBy) {\n      id\n      ...TransactionOverviewFields\n      __typename\n    }\n    __typename\n  }\n  transactionRules {\n    id\n    __typename\n  }\n}\n\nfragment TransactionOverviewFields on Transaction {\n  id\n  amount\n  pending\n  date\n  hideFromReports\n  hiddenByAccount\n  plaidName\n  notes\n  isRecurring\n  reviewStatus\n  needsReview\n  isSplitTransaction\n  dataProviderDescription\n  attachments {\n    id\n    __typename\n  }\n  goal {\n    id\n    name\n    __typename\n  }\n  category {\n    id\n    name\n    icon\n    group {\n      id\n      type\n      __typename\n    }\n    __typename\n  }\n  merchant {\n    name\n    id\n    transactionsCount\n    logoUrl\n    recurringTransactionStream {\n      frequency\n      isActive\n      __typename\n    }\n    __typename\n  }\n  tags {\n    id\n    name\n    color\n    order\n    __typename\n  }\n  account {\n    id\n    displayName\n    icon\n    logoUrl\n    __typename\n  }\n  __typename\n}`
+    }),
+    monarchQuery({
+      operationName: 'Web_GetTransactionsList',
+      variables: {
+        orderBy: 'date',
+        limit,
+        filters: {
+          search: 'LYFT *',
+          categories: [],
+          accounts: [],
+          tags: [],
+          merchants: [],
+          needsReview: true,
+        },
+      },
+      query: `query Web_GetTransactionsList($offset: Int, $limit: Int, $filters: TransactionFilterInput, $orderBy: TransactionOrdering) {\n  allTransactions(filters: $filters) {\n    totalCount\n    totalSelectableCount\n    results(offset: $offset, limit: $limit, orderBy: $orderBy) {\n      id\n      ...TransactionOverviewFields\n      __typename\n    }\n    __typename\n  }\n  transactionRules {\n    id\n    __typename\n  }\n}\n\nfragment TransactionOverviewFields on Transaction {\n  id\n  amount\n  pending\n  date\n  hideFromReports\n  hiddenByAccount\n  plaidName\n  notes\n  isRecurring\n  reviewStatus\n  needsReview\n  isSplitTransaction\n  dataProviderDescription\n  attachments {\n    id\n    __typename\n  }\n  goal {\n    id\n    name\n    __typename\n  }\n  category {\n    id\n    name\n    icon\n    group {\n      id\n      type\n      __typename\n    }\n    __typename\n  }\n  merchant {\n    name\n    id\n    transactionsCount\n    logoUrl\n    recurringTransactionStream {\n      frequency\n      isActive\n      __typename\n    }\n    __typename\n  }\n  tags {\n    id\n    name\n    color\n    order\n    __typename\n  }\n  account {\n    id\n    displayName\n    icon\n    logoUrl\n    __typename\n  }\n  __typename\n}`
+    })
+  ]);
+  return [
+    ...(uberData?.allTransactions?.results || []).filter((x: any) => x.dataProviderDescription.startsWith('UBER *TRIP') || x.dataProviderDescription.startsWith('UBER *EATS')),
+    ...(lyftData?.allTransactions?.results || []).filter((x: any) => x.dataProviderDescription.startsWith('LYFT *'))
+  ];
 }
 
 export async function fetchMonarchTags(): Promise<Array<MonarchTag>> {

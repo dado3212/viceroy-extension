@@ -38,3 +38,6 @@ Thank y'all for using GraphQL 🦋❤️.
 `npm run build`
 
 And then open Chrome and load the unpacked `dist` folder in `chrome://extensions`.
+
+## TODO
+* `rules.json` overrides request Origin/Referer in places it shouldn't, can we scope this just to the Chrome extension requests?
