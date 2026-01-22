@@ -14,8 +14,16 @@ export async function fetchUberEats(oldestUnixTime: number): Promise<Array<UberE
     const resp = await fetch(url, { method: 'POST', headers: getHeader(Header.UberEats)!, body: JSON.stringify(body) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
-    body.lastWorkflowUUID = json.data.orderUuids.at(-1);
-    const orders: Array<any> = Object.values(json.data.ordersMap);
+
+    // Handle case where there are no orders
+    const orderUuids = json.data?.orderUuids ?? [];
+    if (orderUuids.length === 0) {
+      break;
+    }
+
+    body.lastWorkflowUUID = orderUuids.at(-1);
+    const orders: Array<any> = Object.values(json.data?.ordersMap ?? {});
+
     for (const order of orders) {
       allOrders.push({
         storeName: order.storeInfo.title,
@@ -31,10 +39,14 @@ export async function fetchUberEats(oldestUnixTime: number): Promise<Array<UberE
         }),
       });
     }
+
+    // Check if we should stop paginating
+    const lastOrder = orders.at(-1);
     if (
+      !lastOrder ||
       // We've fetched an order that is older than the requested time, we can stop paginating
-      new Date(orders.at(-1).baseEaterOrder.completedAt).getTime() < oldestUnixTime ||
-      !json.data.meta.hasMore
+      new Date(lastOrder.baseEaterOrder.completedAt).getTime() < oldestUnixTime ||
+      !json.data?.meta?.hasMore
     ) {
       break;
     }

@@ -2,3 +2,8 @@ node_modules
 .DS_Store
 dist
 viceroy.zip
+.wxt
+.output
+
+# Test credentials (contains sensitive API tokens)
+scripts/test-headers.json

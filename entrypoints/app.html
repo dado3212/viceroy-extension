@@ -295,6 +295,79 @@
     #error p {
       color: #ce2c31;
     }
+    /* Service Cards */
+    .service-cards {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .service-card {
+      flex: 1;
+      background: white;
+      border: 1px solid #e4e1de;
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+      transition: box-shadow 0.2s ease;
+    }
+    .service-card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .service-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .service-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .service-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+    .service-status {
+      font-size: 13px;
+      margin-bottom: 12px;
+      color: #777573;
+    }
+    .service-status.connected { color: #218358; }
+    .service-status.disconnected { color: #ce2c31; }
+    .service-count {
+      font-size: 28px;
+      font-weight: 600;
+      color: #22201d;
+      line-height: 1.2;
+    }
+    .service-count-label {
+      font-size: 12px;
+      color: #777573;
+      font-weight: 400;
+      margin-top: 4px;
+    }
+    .service-login {
+      margin-top: 12px;
+    }
+    .service-login button {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    .service-card.loading .service-count {
+      opacity: 0.5;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .service-card.loading .service-count-label {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
   </style>
 </head>
 <body>
@@ -332,6 +405,14 @@
         <button id="tagSync" class="mainButton">Sync tag list from Monarch</button>
       </div>
       <div class="wrapper" style="margin: 20px auto;">
+        <h2>Headers (for debugging)</h2>
+        <p>
+          Copy these headers to use with test scripts. The headers are what the extension captured from your browser sessions.
+        </p>
+        <div id="headers-display" style="margin: 12px 0;"></div>
+        <button id="copyHeaders" class="mainButton">Copy Headers JSON</button>
+      </div>
+      <div class="wrapper" style="margin: 20px auto;">
         <h2>Locations</h2>
         <p>
           For better automatic descriptions of Uber Rides you can set short names for various locations (e.g. mapping
@@ -347,21 +428,67 @@
     <div class="content" id="transactions">
       <h1>Transactions</h1>
       <div class="wrapper" style="margin: 20px auto;">
-        <h2>Fetch data</h2>
+        <h2>Connected Services</h2>
         <p>
-          This extension fetches pending Monarch transactions from Uber and Uber Eats, and tries to match the
-          data by price to rides and delivery orders from Uber. It also provides inline buttons to review 
-          these transactions, optionally tag them, and set descriptive notes.
+          Check your service connections below. Click "Fetch & Match" to pull data from each service and match with Monarch transactions.
         </p>
-        <button id="match" class="mainButton">Fetch</button>
-        <span id="status"></span>
-        <div id="error" style="display: none;">
+        <div class="service-cards">
+          <div class="service-card" id="card-monarch">
+            <div class="service-header">
+              <span class="service-dot" style="background: #ff692d"></span>
+              <span class="service-name">Monarch</span>
+            </div>
+            <div class="service-status">Checking...</div>
+            <div class="service-count">—</div>
+            <div class="service-login" style="display: none;">
+              <button style="background: #ff692d;" onclick="window.open('https://app.monarch.com/', '_blank')">Log in</button>
+            </div>
+          </div>
+          <div class="service-card" id="card-uberRides">
+            <div class="service-header">
+              <span class="service-dot" style="background: #000000"></span>
+              <span class="service-name">Uber Rides</span>
+            </div>
+            <div class="service-status">Checking...</div>
+            <div class="service-count">—</div>
+            <div class="service-login" style="display: none;">
+              <button style="background: #000000;" onclick="window.open('https://riders.uber.com/', '_blank')">Log in</button>
+            </div>
+          </div>
+          <div class="service-card" id="card-uberEats">
+            <div class="service-header">
+              <span class="service-dot" style="background: #03c16b"></span>
+              <span class="service-name">Uber Eats</span>
+            </div>
+            <div class="service-status">Checking...</div>
+            <div class="service-count">—</div>
+            <div class="service-login" style="display: none;">
+              <button style="background: #03c16b;" onclick="window.open('https://www.ubereats.com/', '_blank')">Log in</button>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button id="match" class="mainButton">Fetch & Match</button>
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer;">
+            <input type="checkbox" id="needsReviewToggle" checked style="cursor: pointer;">
+            Only show unreviewed
+          </label>
+          <span id="status"></span>
+        </div>
+        <div id="error" style="display: none; margin-top: 12px;">
           <p></p>
+        </div>
+        <div id="debug-logs-container" style="display: none; margin-top: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 12px; color: #777;">Debug Logs</span>
+            <button id="copy-logs" style="font-size: 11px; padding: 4px 8px; border-radius: 4px; background: #2da6ff; color: white; border: none; cursor: pointer;">Copy Logs</button>
+          </div>
+          <div id="debug-logs" style="padding: 12px; background: #f0f0f0; border-radius: 6px; font-family: monospace; font-size: 11px; white-space: pre-wrap; max-height: 300px; overflow-y: auto;"></div>
         </div>
       </div>
       <div id="grid" class="wrapper" style="display: none;"></div>
     </div>
   </div>
-  <script type="module" src="../app.js"></script>
+  <script type="module" src="../lib/app.ts"></script>
 </body>
 </html>

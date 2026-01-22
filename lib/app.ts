@@ -1,16 +1,56 @@
-import { Header, HeaderInfo } from './headers';
+import { Header } from '@/lib/headers';
 
-// Set up the buttons
-const buttons: Partial<Record<Header, HTMLButtonElement>> = {};
-for (const header of Object.values(Header)) {
-  const button = document.createElement('button');
-  button.className = 'mainButton';
-  button.style.backgroundColor = HeaderInfo[header].buttonColor;
-  button.textContent = `Log in to ${HeaderInfo[header].buttonName}`;
-  button.addEventListener('click', async () => window.open(HeaderInfo[header].cookieURL, '_blank'));
-  buttons[header] = button;
-  (document.getElementById('error') as HTMLDivElement).appendChild(button);
+// Update service card status
+function updateCardStatus(cardId: string, connected: boolean) {
+  const card = document.getElementById(`card-${cardId}`);
+  if (!card) return;
+
+  const statusEl = card.querySelector('.service-status');
+  const loginEl = card.querySelector('.service-login') as HTMLElement;
+
+  if (statusEl) {
+    statusEl.textContent = connected ? 'Connected' : 'Not connected';
+    statusEl.className = `service-status ${connected ? 'connected' : 'disconnected'}`;
+  }
+
+  if (loginEl) {
+    loginEl.style.display = connected ? 'none' : 'block';
+  }
 }
+
+// Update service card count
+function updateCardCount(cardId: string, count: number, label: string, loading = false) {
+  const card = document.getElementById(`card-${cardId}`);
+  if (!card) return;
+
+  if (loading) {
+    card.classList.add('loading');
+  } else {
+    card.classList.remove('loading');
+  }
+
+  const countEl = card.querySelector('.service-count');
+  if (countEl) {
+    countEl.innerHTML = `${count}<div class="service-count-label">${label}</div>`;
+  }
+}
+
+// Check service status on page load
+async function checkServiceStatus() {
+  try {
+    const data = await chrome.runtime.sendMessage({ type: 'fetchCredentials' });
+    if (data && data.data) {
+      updateCardStatus('monarch', data.data[Header.Monarch]);
+      updateCardStatus('uberRides', data.data[Header.UberRides]);
+      updateCardStatus('uberEats', data.data[Header.UberEats]);
+    }
+  } catch (e) {
+    console.error('Failed to check service status:', e);
+  }
+}
+
+// Check status on load
+checkServiceStatus();
 
 // Navbar configuration
 const transactions = document.getElementById('transactions-button') as HTMLDivElement;
@@ -32,6 +72,7 @@ settings.addEventListener('click', async () => {
   await fetchCredentials();
   await fetchTags();
   await fetchLocations();
+  await fetchHeaders();
 });
 
 /* === Settings configuration === */
@@ -39,8 +80,16 @@ settings.addEventListener('click', async () => {
 async function fetchCredentials() {
   const data = await chrome.runtime.sendMessage({ type: 'fetchCredentials' });
   let newHTML = '';
-  for (const header of Object.values(Header)) {
-    newHTML += `${HeaderInfo[header].buttonName}: <span class="status ${data.data[header] ? 'synced' : 'unsynced'}">${data.data[header] ? 'Synced' : 'Unsynced'}</span><br />`;
+  // Only show Monarch, Uber Rides, Uber Eats (BayWheels disabled)
+  const activeHeaders = [Header.Monarch, Header.UberRides, Header.UberEats];
+  for (const header of activeHeaders) {
+    const names: Record<Header, string> = {
+      [Header.Monarch]: 'Monarch',
+      [Header.UberRides]: 'Uber Rides',
+      [Header.UberEats]: 'Uber Eats',
+      [Header.BayWheels]: 'BayWheels',
+    };
+    newHTML += `${names[header]}: <span class="status ${data.data[header] ? 'synced' : 'unsynced'}">${data.data[header] ? 'Synced' : 'Unsynced'}</span><br />`;
   }
   document.querySelector('#credentials')!.innerHTML = newHTML;
 }
@@ -52,6 +101,8 @@ async function fetchCredentials() {
   })
   await chrome.runtime.sendMessage({ type: 'updateCredentials' });
   await fetchCredentials();
+  // Also refresh the cards
+  await checkServiceStatus();
 });
 
 // Tags
@@ -137,6 +188,65 @@ async function fetchLocations() {
     }
   });
   await chrome.runtime.sendMessage({ type: 'updateLocations', payload: { locations: newLocations } });
+});
+
+// Headers display for debugging
+let cachedHeadersData: any = null;
+
+async function fetchHeaders() {
+  // Use the new message type that returns actual header objects
+  const data = await chrome.runtime.sendMessage({ type: 'fetchHeadersForExport' });
+  cachedHeadersData = data.data;
+
+  const headersDisplay = document.getElementById('headers-display');
+  if (!headersDisplay) return;
+
+  const activeHeaders = [Header.Monarch, Header.UberRides, Header.UberEats];
+  const names: Record<Header, string> = {
+    [Header.Monarch]: 'Monarch',
+    [Header.UberRides]: 'Uber Rides',
+    [Header.UberEats]: 'Uber Eats',
+    [Header.BayWheels]: 'BayWheels',
+  };
+
+  let html = '';
+  for (const header of activeHeaders) {
+    const headerObj = data.data?.[header];
+    const hasHeaders = headerObj && typeof headerObj === 'object' && Object.keys(headerObj).length > 0;
+    const headerKeys = hasHeaders ? Object.keys(headerObj).length : 0;
+    html += `<div style="display: flex; align-items: center; gap: 8px; margin: 6px 0;">
+      <span style="font-weight: 600; min-width: 100px;">${names[header]}:</span>
+      <span class="status ${hasHeaders ? 'synced' : 'unsynced'}">${hasHeaders ? `${headerKeys} headers captured` : 'No headers'}</span>
+    </div>`;
+  }
+  headersDisplay.innerHTML = html;
+}
+
+(document.getElementById('copyHeaders') as HTMLButtonElement).addEventListener('click', () => {
+  if (!cachedHeadersData) {
+    alert('No headers loaded. Click on Settings tab first.');
+    return;
+  }
+
+  // Format headers for the test script config
+  const exportData: Record<string, any> = {};
+  if (cachedHeadersData[Header.Monarch]) {
+    exportData.monarchHeaders = cachedHeadersData[Header.Monarch];
+  }
+  if (cachedHeadersData[Header.UberRides]) {
+    exportData.uberRidesHeaders = cachedHeadersData[Header.UberRides];
+  }
+  if (cachedHeadersData[Header.UberEats]) {
+    exportData.uberEatsHeaders = cachedHeadersData[Header.UberEats];
+  }
+
+  const jsonStr = JSON.stringify(exportData, null, 2);
+  navigator.clipboard.writeText(jsonStr).then(() => {
+    const btn = document.getElementById('copyHeaders') as HTMLButtonElement;
+    const originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = originalText; }, 1500);
+  });
 });
 
 /* === Transaction configuration === */
@@ -257,28 +367,59 @@ async function render(rows: any[]) {
 async function loadAndMatch() {
   error.style.display = 'none';
   statusEl.textContent = 'Loading…';
+
+  // Reset card counts to show loading
+  updateCardCount('monarch', 0, 'loading...', true);
+  updateCardCount('uberRides', 0, 'loading...', true);
+  updateCardCount('uberEats', 0, 'loading...', true);
+
+  // Get toggle state
+  const needsReviewToggle = document.getElementById('needsReviewToggle') as HTMLInputElement;
+  const needsReview = needsReviewToggle?.checked ?? true;
+  console.log('[App] Toggle element:', needsReviewToggle);
+  console.log('[App] needsReview value being sent:', needsReview);
+
   try {
-    const port = chrome.runtime.connect({ name: 'fetch' });
+    // Embed needsReview in the port name for reliable passing
+    const port = chrome.runtime.connect({ name: `fetch:${needsReview ? '1' : '0'}` });
+    console.log('[App] Connected with port name:', `fetch:${needsReview ? '1' : '0'}`);
     port.onMessage.addListener(async msg => {
       if (msg.progress) {
         statusEl.textContent = msg.progress;
+      }
+      if (msg.debug) {
+        // Update service cards with fetched data (loading = false to stop animation)
+        const monarchLabel = needsReview ? 'pending' : 'transactions';
+        updateCardCount('monarch', msg.debug.monarchTotal, monarchLabel, false);
+        updateCardCount('uberRides', msg.debug.uberRidesFetched ?? 0, 'trips', false);
+        updateCardCount('uberEats', msg.debug.uberEatsFetched ?? 0, 'orders', false);
+
+        // Also update connection status from debug info
+        if (msg.debug.services) {
+          updateCardStatus('monarch', msg.debug.services.monarch);
+          updateCardStatus('uberRides', msg.debug.services.uberRides);
+          updateCardStatus('uberEats', msg.debug.services.uberEats);
+        }
+      }
+      if (msg.logs) {
+        // Display logs in the debug panel
+        const debugContainer = document.getElementById('debug-logs-container');
+        const debugPanel = document.getElementById('debug-logs');
+        if (debugPanel && debugContainer) {
+          debugPanel.textContent = msg.logs.join('\n');
+          debugContainer.style.display = 'block';
+        }
       }
       if (msg.data !== undefined) {
         const data = msg.data;
         if (data.error) {
           statusEl.textContent = `Error: ${data.error}`;
-          if (data.headers) {
-            let text = 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
-            for (const header of Object.keys(data.headers)) {
-              buttons[header as Header]!.style.display = !data.headers[header] ? 'inline-block' : 'none';
-            }     
-            error.querySelector('p')!.innerText = text;
-            error.style.display = 'block';
-          }
+          error.querySelector('p')!.innerText = data.error;
+          error.style.display = 'block';
           return;
         }
         await render(data);
-        statusEl.textContent = `Loaded ${data.length}`;
+        statusEl.textContent = `Loaded ${data.length} matches`;
       }
     });
   } catch (e: any) {
@@ -288,3 +429,16 @@ async function loadAndMatch() {
 }
 
 (document.getElementById('match') as HTMLButtonElement).addEventListener('click', loadAndMatch);
+
+// Copy logs button
+(document.getElementById('copy-logs') as HTMLButtonElement).addEventListener('click', () => {
+  const debugPanel = document.getElementById('debug-logs');
+  if (debugPanel) {
+    navigator.clipboard.writeText(debugPanel.textContent || '').then(() => {
+      const btn = document.getElementById('copy-logs') as HTMLButtonElement;
+      const originalText = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = originalText; }, 1500);
+    });
+  }
+});

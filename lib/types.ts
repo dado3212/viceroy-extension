@@ -1,4 +1,4 @@
-type BayWheelsRide = {
+export type BayWheelsRide = {
   details: {
     startAddress: string,
     endAddress: string,
@@ -9,7 +9,7 @@ type BayWheelsRide = {
   id: string,
 };
 
-type UberEatsOrder = {
+export type UberEatsOrder = {
   storeName: string,
   cost: number, // cents - 3142
   tip: number | null, // raw value 3.14
@@ -17,7 +17,7 @@ type UberEatsOrder = {
   items: Array<string>,
 };
 
-type UberRide = {
+export type UberRide = {
   location: string,
   date: string,
   cost: string,
@@ -26,7 +26,7 @@ type UberRide = {
   error?: string,
 };
 
-type UberRideDetails = {
+export type UberRideDetails = {
   map: string,
   startTime: string,
   endTime: string,
@@ -34,7 +34,7 @@ type UberRideDetails = {
   fare: string,
 };
 
-type AnnotatedUberRide = UberRide & {
+export type AnnotatedUberRide = UberRide & {
   _norm: {
     amount: string,
     date: string,
@@ -43,7 +43,7 @@ type AnnotatedUberRide = UberRide & {
   }
 };
 
-type MonarchTransaction = {
+export type MonarchTransaction = {
   amount: number, /* -3.4 */
   date: string,
   id: string,
@@ -57,13 +57,13 @@ type MonarchTransaction = {
   },
 };
 
-type MonarchTag = {
+export type MonarchTag = {
   id: string,
   name: string,
   color: string,
 };
 
-type MatchedRow = {
+export type MatchedRow = {
   txn: {
     id: string,
     amount: number,

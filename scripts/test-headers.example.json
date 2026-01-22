@@ -1,0 +1,19 @@
+{
+  "monarchHeaders": {
+    "authorization": "Bearer YOUR_TOKEN_HERE",
+    "content-type": "application/json",
+    "accept": "*/*",
+    "origin": "https://app.monarch.com",
+    "referer": "https://app.monarch.com/"
+  },
+  "uberRidesHeaders": {
+    "cookie": "YOUR_UBER_COOKIE_HERE",
+    "content-type": "application/json",
+    "x-csrf-token": "YOUR_CSRF_TOKEN_HERE"
+  },
+  "uberEatsHeaders": {
+    "cookie": "YOUR_UBEREATS_COOKIE_HERE",
+    "content-type": "application/json",
+    "x-csrf-token": "YOUR_CSRF_TOKEN_HERE"
+  }
+}

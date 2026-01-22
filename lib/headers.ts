@@ -53,33 +53,36 @@ let headers: Partial<Record<Header, Record<string, string>>> = {};
 
 export const getHeader = (header: Header) => headers[header];
 
-// Listen for any relevant requests, and steal the headers/cookies if we're missing them
-const listenerUrls: Array<string> = [];
-for (const header of Object.values(Header)) {
-  listenerUrls.push(`${HeaderInfo[header].api}*`);
-}
-chrome.webRequest.onBeforeSendHeaders.addListener(
-  details => {
-    for (const header of Object.values(Header)) {
-      if (!headers[header]) {
-        const {api, initiatorFilter, headerValidator} = HeaderInfo[header];
-        if (details.initiator?.includes(initiatorFilter) && details.url.includes(api)) {
-          let requestHeaders = Object.fromEntries(
-            (details.requestHeaders || []).map(h => [h.name, h.value || ''])
-          );
-          if (headerValidator == null || headerValidator(requestHeaders)) {
-            headers[header] = requestHeaders;
-            (async () => await chrome.storage.sync.set({ [header]: requestHeaders }))();
+// Setup function to register the webRequest listener
+// Must be called from inside defineBackground() main function
+export const setupHeaderListener = () => {
+  const listenerUrls: Array<string> = [];
+  for (const header of Object.values(Header)) {
+    listenerUrls.push(`${HeaderInfo[header].api}*`);
+  }
+  chrome.webRequest.onBeforeSendHeaders.addListener(
+    details => {
+      for (const header of Object.values(Header)) {
+        if (!headers[header]) {
+          const {api, initiatorFilter, headerValidator} = HeaderInfo[header];
+          if (details.initiator?.includes(initiatorFilter) && details.url.includes(api)) {
+            let requestHeaders = Object.fromEntries(
+              (details.requestHeaders || []).map(h => [h.name, h.value || ''])
+            );
+            if (headerValidator == null || headerValidator(requestHeaders)) {
+              headers[header] = requestHeaders;
+              (async () => await chrome.storage.sync.set({ [header]: requestHeaders }))();
+            }
           }
         }
       }
-    }
-  },
-  {
-    urls: listenerUrls,
-  },
-  ["requestHeaders", "extraHeaders"]
-);
+    },
+    {
+      urls: listenerUrls,
+    },
+    ["requestHeaders", "extraHeaders"]
+  );
+};
 
 export const updateHeadersFromCache = async () => {
   const cachedHeaders = await chrome.storage.sync.get(Object.values(Header));

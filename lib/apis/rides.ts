@@ -56,14 +56,16 @@ export async function fetchUberRides(limit = 5, newestRideMs: number, oldestRide
     )).filter((r: UberRide) => !(r.cost.startsWith('$0.00') && !r.details?.fare));
     allRides.push(...ridesWithDetails);
 
+    // Check if we should stop paginating
+    const lastRide = ridesWithDetails.at(-1);
     if (
       // I think this is what we hit when we stop paginating?
       nextPageToken === null ||
       // Or we fetched enough
-      numRidesFetched >= limit || 
+      numRidesFetched >= limit ||
       // Or we fetched a ride that's older than the transactions we're looking at
-      ridesWithDetails.length === 0 || 
-      new Date(ridesWithDetails.at(-1)!.details?.startTime).getTime() < oldestRideMs
+      ridesWithDetails.length === 0 ||
+      (lastRide?.details?.startTime && new Date(lastRide.details.startTime).getTime() < oldestRideMs)
     ) {
       break;
     }
