@@ -14,6 +14,10 @@ export async function fetchUberEats(oldestUnixTime: number): Promise<Array<UberE
     const resp = await fetch(url, { method: 'POST', headers: getHeader(Header.UberEats)!, body: JSON.stringify(body) });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const json = await resp.json();
+    if (json.status === 'failure') {
+      console.log(json);
+      throw new Error(`Failed to load Uber data. Try Force Sync-ing credentials in Settings.`);
+    }
     body.lastWorkflowUUID = json.data.orderUuids.at(-1);
     const orders: Array<any> = Object.values(json.data.ordersMap);
     for (const order of orders) {

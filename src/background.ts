@@ -354,6 +354,7 @@ chrome.runtime.onConnect.addListener(async port => {
 
     port.disconnect();
   } catch (err: any) {
+    console.log(err);
     port.postMessage({ data: { error: String((err as Error)?.message || err) } });
     port.disconnect();
   }
