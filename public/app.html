@@ -161,6 +161,12 @@
       font-family: inherit;
       border: 0;
     }
+    .plainButton {
+      background: transparent;
+      border: 1px solid #ccc;
+      padding: 6px 12px;
+      border-radius: 4px;
+    }
     .mainButton {
       color: white;
       border-radius: 4px;
@@ -341,7 +347,13 @@
           Click the 'Save Locations' button when you're done editing.
         </p>
         <div id="locationWrapper"></div>
-        <button id="saveLocations" class="mainButton">Save Locations</button>
+        <div style="display: flex; align-items: center;">
+          <button id="saveLocations" class="mainButton">Save Locations</button>
+          <div style="flex: 1;"></div>
+          <button id="exportLocations" class="plainButton" style="margin-left: 6px;">Export JSON</button>
+          <button id="importLocations" class="plainButton" style="margin-left: 6px;">Import JSON</button>
+        </div>
+        <input id="importLocationsInput" type="file" accept="application/json" style="display:none" />
       </div>
     </div>
     <div class="content" id="transactions">

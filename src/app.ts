@@ -115,8 +115,8 @@ async function fetchLocations() {
       const newLocation = document.createElement('div');
       newLocation.className = 'location';
       newLocation.innerHTML = `
-        <input type="text" class="orig" value="">
-        <input type="text" class="short" value="">
+        <input type="text" class="orig" value="" placeholder="1600 Pennsylvania Ave NW, Washington, DC 20500">
+        <input type="text" class="short" value="" placeholder="The White House">
       `;
       newLocation.appendChild(x);
       document.querySelector('#locations')!.appendChild(newLocation);
@@ -137,6 +137,49 @@ async function fetchLocations() {
     }
   });
   await chrome.runtime.sendMessage({ type: 'updateLocations', payload: { locations: newLocations } });
+});
+
+(document.getElementById('exportLocations') as HTMLButtonElement).addEventListener('click', async () => {
+  const locations: { [key: string]: string } = {};
+  document.querySelectorAll('#locations .location').forEach(l => {
+    const orig = (l.querySelector('.orig') as HTMLInputElement)!.value;
+    const short = (l.querySelector('.short') as HTMLInputElement)!.value;
+    if (orig !== '' && short !== '') {
+      locations[orig] = short;
+    }
+  });
+  const blob = new Blob([JSON.stringify(locations, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'viceroy-locations.json';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+});
+
+const importInput = document.getElementById('importLocationsInput') as HTMLInputElement;
+(document.getElementById('importLocations') as HTMLButtonElement).addEventListener('click', () => {
+  importInput.value = '';
+  importInput.click();
+});
+
+importInput.addEventListener('change', async () => {
+  const file = importInput.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      console.error('Invalid locations JSON. Expected a key/value object.');
+      return;
+    }
+    await chrome.runtime.sendMessage({ type: 'updateLocations', payload: { locations: data } });
+    window.location.reload();
+  } catch (err) {
+    console.error(err);
+  }
 });
 
 /* === Transaction configuration === */
