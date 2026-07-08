@@ -22,7 +22,9 @@ export const HeaderInfo: Record<Header, {
     api: 'https://api.monarch.com/graphql',
     initiatorFilter: 'monarch.com',
     cookieURL: 'https://app.monarch.com/',
-    headerValidator: (h) => h['authorization']?.length >= 7,
+    // Monarch authenticates via cookies (sent automatically with credentials: 'include')
+    // plus an x-csrftoken header
+    headerValidator: (h) => (h['x-csrftoken']?.length ?? 0) > 0,
     buttonName: 'Monarch',
     buttonColor: '#ff692d',
   },
