@@ -1,4 +1,4 @@
-type BayWheelsRide = {
+type LyftBikeRide = {
   details: {
     startAddress: string,
     endAddress: string,
@@ -73,6 +73,6 @@ type MatchedRow = {
   warn: boolean,
   ride: AnnotatedUberRide | null,
   eats: UberEatsOrder | null,
-  bayWheels: Array<BayWheelsRide>,
+  lyftBike: Array<LyftBikeRide>,
   suggestedNote: string,
 };

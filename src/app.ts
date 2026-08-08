@@ -12,6 +12,15 @@ for (const header of Object.values(Header)) {
   (document.getElementById('error') as HTMLDivElement).appendChild(button);
 }
 
+// Shown when Monarch is logged in but some optional sources aren't — lets the user
+// proceed with just the transactions that can be matched.
+const continueBtn = document.createElement('button');
+continueBtn.className = 'mainButton';
+continueBtn.textContent = 'Continue with Monarch only';
+continueBtn.style.display = 'none';
+continueBtn.addEventListener('click', () => loadAndMatch(true));
+(document.getElementById('error') as HTMLDivElement).appendChild(continueBtn);
+
 // Navbar configuration
 const transactions = document.getElementById('transactions-button') as HTMLDivElement;
 const settings = document.getElementById('settings-button') as HTMLDivElement;
@@ -220,8 +229,8 @@ async function render(rows: any[]) {
         minute: '2-digit',
         hour12: true
       }).replace(',', ' •')}<br />$${(r.eats.cost / 100).toFixed(2)}<br />${r.eats.items.join(' • ')}`;
-    } else if (r.bayWheels) {
-      for (const ride of r.bayWheels) {
+    } else if (r.lyftBike) {
+      for (const ride of r.lyftBike) {
         detailsCol.innerHTML += `<b>Ride</b><br />${new Date(ride.date).toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
@@ -297,8 +306,9 @@ async function render(rows: any[]) {
   });
 }
 
-async function loadAndMatch() {
+async function loadAndMatch(continueAnyways = false) {
   error.style.display = 'none';
+  continueBtn.style.display = 'none';
   statusEl.textContent = 'Loading…';
   try {
     const port = chrome.runtime.connect({ name: 'fetch' });
@@ -311,12 +321,15 @@ async function loadAndMatch() {
         if (data.error) {
           statusEl.textContent = `Error: ${data.error}`;
           if (data.headers) {
-            let text = 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
+            let text = data.canContinue
+              ? 'You\'re logged in to Monarch, but not every source below. Log in to the rest for full matching, or continue with Monarch only (unmatched sources will just be skipped):'
+              : 'This extension uses your logged in cookies to access Monarch and Uber APIs, but you\'re not logged in. Please navigate to each page and log in:';
             for (const header of Object.keys(data.headers)) {
               buttons[header as Header]!.style.display = !data.headers[header] ? 'inline-block' : 'none';
-            }     
+            }
             error.querySelector('p')!.innerText = text;
             error.style.display = 'block';
+            continueBtn.style.display = data.canContinue ? 'inline-block' : 'none';
           }
           return;
         }
@@ -324,10 +337,11 @@ async function loadAndMatch() {
         statusEl.textContent = `Loaded ${data.length}`;
       }
     });
+    port.postMessage({ type: 'start', continueAnyways });
   } catch (e: any) {
     console.log(e);
     statusEl.textContent = 'Error: ' + (e?.message || String(e));
   }
 }
 
-(document.getElementById('match') as HTMLButtonElement).addEventListener('click', loadAndMatch);
+(document.getElementById('match') as HTMLButtonElement).addEventListener('click', () => loadAndMatch());

@@ -4,7 +4,7 @@
   "author": "Alex Beals",
   "description": "Automatically match Monarch transactions with other platforms (currently just Uber and Uber Eats).",
   "homepage_url": "https://alexbeals.com",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "action": { "default_title": "Open Viceroy" },
   "icons": {
     "32": "icons/icon-32.png",
@@ -36,7 +36,7 @@
     "https://api.monarch.com/*",
     "https://app.monarch.com/*",
     "https://static-maps.uber.com/*",
-    "https://account.baywheels.com/*"
+    "https://account.lyftbikes.com/*"
   ],
   "declarative_net_request": {
     "rule_resources": [

@@ -5,12 +5,12 @@
     "action": {
       "type": "modifyHeaders",
       "requestHeaders": [
-        { "header": "origin",  "operation": "set", "value": "https://account.baywheels.com" },
-        { "header": "referer", "operation": "set", "value": "https://account.baywheels.com/" }
+        { "header": "origin",  "operation": "set", "value": "https://account.lyftbikes.com" },
+        { "header": "referer", "operation": "set", "value": "https://account.lyftbikes.com/" }
       ]
     },
     "condition": {
-      "regexFilter": "^https://account\\.baywheels\\.com/.*",
+      "regexFilter": "^https://account\\.lyftbikes\\.com/.*",
       "resourceTypes": ["xmlhttprequest", "other"]
     }
   }

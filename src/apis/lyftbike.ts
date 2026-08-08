@@ -1,19 +1,19 @@
 
 import { getHeader, Header } from '../headers';
 
-export async function fetchBayWheels(oldestUnixTime: number): Promise<Array<BayWheelsRide>> {
+export async function fetchLyftBike(oldestUnixTime: number): Promise<Array<LyftBikeRide>> {
   let body = {
     operationName: 'GetCurrentUserRides',
     variables: {startTimeMs: `${new Date().getTime()}`},
     query: `query GetCurrentUserRides($startTimeMs: String, $memberId: String) {\n  config {\n    rideHistory {\n      enabled\n      __typename\n    }\n    comembers {\n      enabled\n      __typename\n    }\n    __typename\n  }\n  member(id: $memberId) {\n    id\n    rideHistory(startTimeMs: $startTimeMs) {\n      limit\n      hasMore\n      rideHistoryList {\n        rideId\n        startTimeMs\n        endTimeMs\n        price {\n          formatted\n          __typename\n        }\n        duration\n        rideablePhotoUrl\n        rideableName\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}`,
   };
 
-  const allRides: Array<BayWheelsRide> = [];
+  const allRides: Array<LyftBikeRide> = [];
   let numRequests = 0;
   while (numRequests < 20) {
-    const json = await bayWheelsQuery(body);
+    const json = await lyftBikeQuery(body);
     const rides: Array<any> = Object.values(json.data.member.rideHistory.rideHistoryList);
-    // 3e4 matches BayWheels website behavior
+    // 3e4 matches LyftBike website behavior
     body.variables.startTimeMs = `${parseInt(rides.at(-1).startTimeMs) - 3e4}`;
     const ridesWithDetails = (await Promise.all(
       rides
@@ -50,15 +50,15 @@ async function fetchTripDetails(rideId: string): Promise<{
     query: `query GetCurrentUserRideDetails($rideId: String!) {\n  me {\n    id\n    rideDetails(rideId: $rideId) {\n      rideId\n      startTimeMs\n      endTimeMs\n      price {\n        formatted\n        __typename\n      }\n      startAddressStr\n      endAddressStr\n      paymentBreakdownMap {\n        lineItems {\n          title\n          amount {\n            formatted\n            __typename\n          }\n          __typename\n        }\n        chargeAccount {\n          cardType\n          lastFour\n          clientPaymentMethod\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}`,
   };
 
-  const json = await bayWheelsQuery(body);
+  const json = await lyftBikeQuery(body);
   return {
     startAddress: json?.data?.me?.rideDetails?.startAddressStr,
     endAddress: json?.data?.me?.rideDetails?.endAddressStr,
   };
 }
 
-async function bayWheelsQuery(body: unknown): Promise<any> {
-  const resp = await fetch('https://account.baywheels.com/bikesharefe-gql', { method: 'POST', mode: 'cors', credentials: 'include', headers: getHeader(Header.BayWheels)!, body: JSON.stringify(body) });
+async function lyftBikeQuery(body: unknown): Promise<any> {
+  const resp = await fetch('https://account.lyftbikes.com/bikesharefe-gql', { method: 'POST', mode: 'cors', credentials: 'include', headers: getHeader(Header.LyftBike)!, body: JSON.stringify(body) });
   if (!resp.ok) {
     const text = await resp.text().catch(() => '');
     throw new Error(`HTTP ${resp.status}${text ? `: ${text.slice(0, 200)}` : ''}`);

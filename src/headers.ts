@@ -6,7 +6,7 @@ export enum Header {
   Monarch = 'monarchHeaders',
   UberEats = 'uberEatsHeaders',
   UberRides = 'uberRidesHeaders',
-  BayWheels = 'baywheelsHeaders',
+  LyftBike = 'lyftbikeHeaders',
 }
 
 export const HeaderInfo: Record<Header, {
@@ -42,11 +42,11 @@ export const HeaderInfo: Record<Header, {
     buttonName: 'Uber',
     buttonColor: 'black',
   },
-  [Header.BayWheels]: {
-    api: 'https://account.baywheels.com/bikesharefe-gql',
-    initiatorFilter: 'account.baywheels.com',
-    cookieURL: 'https://account.baywheels.com/profile',
-    buttonName: 'BayWheels',
+  [Header.LyftBike]: {
+    api: 'https://account.lyftbikes.com/bikesharefe-gql',
+    initiatorFilter: 'account.lyftbikes.com',
+    cookieURL: 'https://account.lyftbikes.com/profile',
+    buttonName: 'Lyft Bike',
     buttonColor: '#ff00bf',
   },
 };
